@@ -225,12 +225,13 @@ contract MambaGame is Ownable {
 	    public 
 	    returns (bool)
 	{
-	    // Calculate the winners.
 	    require(_endExRate[0] > 0);
 		require(_endExRate[1] > 0);
 		require(_endExRate[2] > 0);
 		require(_endExRate[3] > 0);
 		require(_endExRate[4] > 0);
+		
+		require(now > closeTime);
 		
 		uint256[5] memory ranks;
 		

@@ -153,6 +153,38 @@ contract('MambaGame', function(accounts) {
 	}); 
 	
 	it("Game - Largest rasing coin, sole winner", async function () {
+		let game = await MambaGame.deployed();
 		
+		// Test is closed.
+		let isAlive = await game.isAlive.call();
+		assert.ok(isAlive);
+		
+		// Get balance at beginning.
+		let balanceBegin0 = web3.eth.getBalance(accounts[7]);
+		let balanceBegin1 = web3.eth.getBalance(accounts[8]);
+		
+		// Bets.
+		let bets = [];
+		bets.push(game.bet("0", accounts[7], {value: web3.toWei(20, "finney")
+			, from: accounts[0]}));
+		bets.push(game.bet("0", accounts[8], {value: web3.toWei(20, "finney")
+			, from: accounts[0]}));
+		bets.push(game.bet("0", accounts[9], {value: web3.toWei(10, "finney")
+			, from: accounts[0]}));
+		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
+			, from: accounts[0]}));
+		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
+			, from: accounts[0]}));
+		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
+			, from: accounts[0]}));
+		
+		await Promise.all(bets);
+		
+		// Close the game.
+		
+		// Get balance at ending.
+		let balanceFinal0 = web3.eth.getBalance(accounts[7]);
+		let balanceFinal1 = web3.eth.getBalance(accounts[8]);
+
 	});
 });
