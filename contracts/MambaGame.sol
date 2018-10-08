@@ -183,6 +183,10 @@ contract MambaGame is Ownable {
 	    return winnerCoinIds.length;
 	}
 	
+	function isAlive() public view returns (bool) {
+		return now >= openTime && now <= closeTime;
+	}
+	
 	function bet(uint256 _id, address _player) public payable {
 	    require(msg.value >= MIN_BET);
 	    require(_id < 5);

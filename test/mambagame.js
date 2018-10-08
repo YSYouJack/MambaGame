@@ -105,4 +105,54 @@ contract('MambaGame', function(accounts) {
 		let numberOfWinnerCoinIds = await game.numberOfWinnerCoinIds.call();
 		assert.ok(numberOfWinnerCoinIds.isZero());
 	}); 
+	
+	it("Take bets", async function () {
+		let game = await MambaGame.deployed();
+		
+		// Test is closed.
+		let isAlive = await game.isAlive.call();
+		assert.ok(isAlive);
+		
+		// First bet.
+		await game.bet("0", accounts[1]
+			, {value: web3.toWei(10, "finney"), from: accounts[1]});
+			
+		let netBets0 = Web3.utils.toBN(Web3.utils.toWei("9950", "microether"));
+		let coinbets = await game.getCoinBetData.call(0);
+		assert.ok(coinbets[0].eq(netBets0)); // totalBets
+		assert.ok(coinbets[1].eq(netBets0)); // largestBets
+		assert.ok(coinbets[2].eq(1));       // numberOfBets
+		
+		// Same largest bet on same coin.
+		await game.bet("0", accounts[2]
+			, {value: web3.toWei(10, "finney"), from: accounts[2]});
+			
+		coinbets = await game.getCoinBetData.call(0);
+		assert.ok(coinbets[0].eq(netBets0.add(netBets0))); // totalBets
+		assert.ok(coinbets[1].eq(netBets0)); // largestBets
+		assert.ok(coinbets[2].eq(2));       // numberOfBets
+		
+		// Another bigger bet on same coin.
+		await game.bet("0", accounts[3]
+			, {value: web3.toWei(100, "finney"), from: accounts[3]});
+			
+		let netBets1 = Web3.utils.toBN(Web3.utils.toWei("99500", "microether"));
+		coinbets = await game.getCoinBetData.call(0);
+		assert.ok(coinbets[0].eq(netBets1.add(netBets0).add(netBets0))); // totalBets
+		assert.ok(coinbets[1].eq(netBets1)); // largestBets
+		assert.ok(coinbets[2].eq(3));        // numberOfBets
+		
+		// Change bet to another coins
+		await game.bet("1", accounts[4]
+			, {value: web3.toWei(100, "finney"), from: accounts[4]});
+			
+		coinbets = await game.getCoinBetData.call(1);
+		assert.ok(coinbets[0].eq(netBets1)); // totalBets
+		assert.ok(coinbets[1].eq(netBets1)); // largestBets
+		assert.ok(coinbets[2].eq(1));        // numberOfBets
+	}); 
+	
+	it("Game - Largest rasing coin, sole winner", async function () {
+		
+	});
 });

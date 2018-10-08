@@ -2,7 +2,7 @@ var Web3 = require("Web3");
 var MambaGame = artifacts.require("./MambaGame.sol");
 
 module.exports = function(deployer, network, accounts) {
-	var openingTime = Date.now() / 1000 + 10;
+	var openingTime = Date.now() / 1000;
 	var duration = 600;
 	
 	deployer.deploy(MambaGame
