@@ -1,0 +1,27 @@
+{
+  "name": "mambagame",
+  "version": "1.0.0",
+  "description": "The mamba betting game. Players can bet the higest price rising rate from 5 different cyptocurriencies.",
+  "main": "truffle.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "truffle.cmd test",
+	"dev": "lite-server"
+  },
+  "keywords": [
+    "mamba",
+    "blockchain",
+    "Ethereum",
+    "smart",
+    "contract",
+    "solidity",
+    "dapp"
+  ],
+  "author": "YingShiuan (Jack)",
+  "license": "MIT",
+  "dependencies": {
+    "lite-server": "^2.4.0"
+  }
+}
