@@ -937,12 +937,6 @@ contract('MambaGameTest', function(accounts) {
 		let timeStampOfEndRateSol = await game.timeStampOfEndRate.call();
 		assert.ok(timeStampOfEndRateSol.eq(timeStampOfEndRate));
 		
-		let A = await game.A.call();
-		let B = await game.B.call();
-		
-		A = Web3.utils.toBN(A);
-		B = Web3.utils.toBN(B);
-		
 		let totalAwards = Web3.utils.toBN(web3.toWei(49750, "microether"));
 		
 		// Get balance at ending. 
