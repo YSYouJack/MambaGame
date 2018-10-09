@@ -15,7 +15,6 @@ contract MambaGame is Ownable {
 		string name;
 		int32  startExRate;
 		int32  endExRate;
-		int32 finalChangeRate;
 	}
 	
 	struct CoinBets {
@@ -61,7 +60,7 @@ contract MambaGame is Ownable {
 		, string _coinName2
 		, string _coinName3
 		, string _coinName4
-		, int16[5] _startExRate
+		, int32[5] _startExRate
 		, uint256 _exRateTimeStamp
 		, uint8[50] _YDistribution
 		, uint8 _A
@@ -171,7 +170,7 @@ contract MambaGame is Ownable {
 	    returns (uint256 totalBets, uint256 largestBets, uint256 numberOfBets)
 	{
 	    require(_id < 5);
-	    require(now.add(HIDDEN_TIME_BEFORE_CLOSE) <= closeTime);
+	    require(now.add(HIDDEN_TIME_BEFORE_CLOSE) <= closeTime || now > closeTime);
 	    
 	    CoinBets storage c = _coinbets[_id];
 	    totalBets = c.totalBets;
@@ -220,7 +219,7 @@ contract MambaGame is Ownable {
         emit CoinBet(_id, _player, betAmount);
 	}
 	
-	function close(int16[5] _endExRate, uint256 _timeStampOfEndRate) 
+	function close(int32[5] _endExRate, uint256 _timeStampOfEndRate) 
 	    onlyOwner 
 	    public 
 	    returns (bool)
@@ -333,6 +332,7 @@ contract MambaGame is Ownable {
 		    }
 		}
 		
+		
 		// Decide the winner.
 		if (_getLargestBets(_coinbets[ranks[1]]).add(minDiffBets) < _getLargestBets(_coinbets[ranks[0]])) {
 		    isClosed = true;
@@ -435,6 +435,7 @@ contract MambaGame is Ownable {
 		}
 		
 		return isClosed;
+		
 	}
 	
 	function _isEqualTo(int32 start0, int32 end0, int32 start1, int32 end1) 
@@ -467,12 +468,15 @@ contract MambaGame is Ownable {
 	    uint256 totalAward = address(this).balance;
 	    uint256 totalAwardPerCoin = totalAward.div(winnerCoinIds.length);
 	    uint256 restWei = 0;
+	    
 	    for (uint256 i = 0; i < winnerCoinIds.length; ++i) {
 	        restWei += _distributeOneCoin(_coinbets[winnerCoinIds[i]], totalAwardPerCoin);
 	    }
 	    
-	    teamWallet.transfer(restWei);
-		emit SendRemainAwards(teamWallet, restWei);
+	    if (0 < restWei) {
+	        teamWallet.transfer(restWei);
+		    emit SendRemainAwards(teamWallet, restWei);
+	    }
 	}
 	
 	function _distributeOneCoin(CoinBets storage _cbets, uint256 totalAwards) 
@@ -503,17 +507,21 @@ contract MambaGame is Ownable {
 	            awards = totalAwardsB.mul(_cbets.bets[i].amount).div(betsB);
 	        }
 	        
-	        _cbets.bets[i].player.transfer(awards);
-	        totalAwards = totalAwards.sub(awards);
-			emit SendAwards(_cbets.bets[_cbets.largestBetIds[i]].player, totalAwardsA);
+	        if (0 < awards) {
+	            _cbets.bets[i].player.transfer(awards);
+	            totalAwards = totalAwards.sub(awards);
+			    emit SendAwards(_cbets.bets[i].player, awards);
+	        }
 	    }
 		
 		totalAwardsA = totalAwards.div(_cbets.largestBetIds.length);
 	    
-	    for (i = 0; i < _cbets.largestBetIds.length; ++i) {
-	        _cbets.bets[_cbets.largestBetIds[i]].player.transfer(totalAwardsA);
-	        totalAwards = totalAwards.sub(totalAwardsA);
-			emit SendAwards(_cbets.bets[_cbets.largestBetIds[i]].player, totalAwardsA);
+	    if (0 < totalAwardsA) {
+	        for (i = 0; i < _cbets.largestBetIds.length; ++i) {
+	            _cbets.bets[_cbets.largestBetIds[i]].player.transfer(totalAwardsA);
+	            totalAwards = totalAwards.sub(totalAwardsA);
+			    emit SendAwards(_cbets.bets[_cbets.largestBetIds[i]].player, totalAwardsA);
+	        }
 	    }
 	    
 	    return totalAwards;
