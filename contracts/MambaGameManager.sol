@@ -21,7 +21,7 @@ contract MambaGameManager is Ownable {
     
     function addGame(address game) onlyOwner public {
 	    MambaGame g1 = MambaGame(game);
-	    require(g1.owner() == address(this));
+	    require(g1.owner() == this.owner());
 	    
 	    if (0 != games.length) {
 	        MambaGame g0 = MambaGame(games[games.length - 1]);

@@ -68,7 +68,85 @@ contract MambaGame is Ownable {
 		, uint16 _txFee
 		, uint256 _minDiffBets
 		, address _teamWallet) public
+	/*
+	constructor() public
+	*/
 	{
+	    /*
+	    uint256 _openTime = now;
+	    uint256 _gameDuration = 300;
+	    
+	    string memory _coinName0 = "Coin0";
+	    string memory _coinName1 = "Coin1";
+	    string memory _coinName2 = "Coin2";
+	    string memory _coinName3 = "Coin3";
+	    string memory _coinName4 = "Coin4";
+	    uint8 _A = 10;
+		uint8 _B = 20;
+		uint256 _exRateTimeStamp = now;
+		uint16 _txFee = 5;
+		uint256 _minDiffBets = 0.1 ether;
+		address _teamWallet = msg.sender;
+		
+		int32[5] memory _startExRate;
+        _startExRate[0] = 10000;
+        _startExRate[1] = 20000;
+        _startExRate[2] = 30000;
+        _startExRate[3] = 40000;
+        _startExRate[4] = 50000;
+	    
+	    uint8[50] memory _YDistribution;
+	    _YDistribution[0] = 1;
+	    _YDistribution[1] = 2;
+	    _YDistribution[2] = 3;
+	    _YDistribution[3] = 4;
+	    _YDistribution[4] = 5;
+	    _YDistribution[5] = 6;
+	    _YDistribution[6] = 7;
+	    _YDistribution[7] = 8;
+	    _YDistribution[8] = 9;
+	    _YDistribution[9] = 10;
+	    _YDistribution[10] = 1;
+	    _YDistribution[11] = 2;
+	    _YDistribution[12] = 3;
+	    _YDistribution[13] = 4;
+	    _YDistribution[14] = 5;
+	    _YDistribution[15] = 6;
+	    _YDistribution[16] = 7;
+	    _YDistribution[17] = 8;
+	    _YDistribution[18] = 9;
+	    _YDistribution[19] = 10;
+	    _YDistribution[20] = 1;
+	    _YDistribution[21] = 2;
+	    _YDistribution[22] = 3;
+	    _YDistribution[23] = 4;
+	    _YDistribution[24] = 5;
+	    _YDistribution[25] = 6;
+	    _YDistribution[26] = 7;
+	    _YDistribution[27] = 8;
+	    _YDistribution[28] = 9;
+	    _YDistribution[29] = 10;
+	    _YDistribution[30] = 1;
+	    _YDistribution[31] = 2;
+	    _YDistribution[32] = 3;
+	    _YDistribution[33] = 4;
+	    _YDistribution[34] = 5;
+	    _YDistribution[35] = 6;
+	    _YDistribution[36] = 7;
+	    _YDistribution[37] = 8;
+	    _YDistribution[38] = 9;
+	    _YDistribution[39] = 10;
+	    _YDistribution[40] = 1;
+	    _YDistribution[41] = 2;
+	    _YDistribution[42] = 3;
+	    _YDistribution[43] = 4;
+	    _YDistribution[44] = 5;
+	    _YDistribution[45] = 6;
+	    _YDistribution[46] = 7;
+	    _YDistribution[47] = 8;
+	    _YDistribution[48] = 9;
+	    _YDistribution[49] = 10;
+	    */
 	    // Check inputs.
 		require(_A <= 100 && _B <= 100 && _A + _B <= 100);
 		
@@ -164,6 +242,55 @@ contract MambaGame is Ownable {
 		minDiffBets = _minDiffBets;
 	}
 	
+	/*
+	function testExtend() public {
+	    closeTime = closeTime.add(gameDuration);
+		emit Extended();
+	}
+	
+	function testClosed(int32 _id) public {
+	    timeStampOfEndRate = now;
+		coins[0].endExRate = _id * 10000 + 1;
+		coins[1].endExRate = _id * 10000 + 2;
+		coins[2].endExRate = _id * 10000 + 3;
+		coins[3].endExRate = _id * 10000 + 4;
+		coins[4].endExRate = _id * 10000 + 5;
+		
+		if (0 == _id) {
+		    winnerCoinIds.length = 2;
+		    winnerCoinIds[0] = 1;
+		    winnerCoinIds[1] = 3;
+		    
+		    emit SendAwards(0x40d8bf4DA4eacBe8F08652b25503bd189174e48d, 1 ether);
+		    emit SendAwards(0xc56Dd463D318C9503f218A9041d62469A4CC9770, 2 ether);
+		    
+		} else if (1 == _id) {
+		    winnerCoinIds.length = 3;
+		    winnerCoinIds[0] = 0;
+		    winnerCoinIds[1] = 2;
+		    winnerCoinIds[2] = 4;
+		    
+		    emit SendAwards(0x6c0937b87B374Af82Af2092404C9B6Ca933c3e90, 1 ether);
+		    emit SendAwards(0x439aeD2238E9e46E69d076B2EF5Fbe2eE0C65c5b, 2 ether);
+		    
+		} else {
+		    winnerCoinIds.length = 1;
+		    winnerCoinIds[0] = 2;
+		    
+		    emit SendAwards(0xbF7c3BaC5624490823906512a80DBC53Df73175D, 2 ether);
+		}
+		    
+		emit Closed();
+	}
+	
+	function testBet() public {
+	   	emit CoinBet(1, 0x70a7b0fea692059674e483dae9ec544ddae8c17b, 1 ether);
+	}
+	
+	function largestBet() public {
+	    emit CoinLargestBet(1, 10 ether);
+	}
+	*/
 	function getCoinBetData(uint256 _id) 
 	    public 
 	    view 

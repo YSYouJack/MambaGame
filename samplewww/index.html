@@ -1,11 +1,82 @@
-一暝夢攏看無你的人　 阮的心是夜夜在思戀
-情是風中的花叢　 去落袂凍照希望　 阮猶原為你塊清香
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Mamba Game</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script src="./javascripts/mambagame.js"></script>
+		<script src="./javascripts/app.js"></script>
+	</head>
+	<body>
+		<h2>Mamba Game Manager</h2>
+		Address: <span id ="manager-addr">xxx</span></br>
+		Is inited: <span id ="manager-is-inited">xxx</span></br>
+		Number of games: <span id ="number-of-games">0</span></br>
+		<select id="game-selector">
+			<option value="" disabled selected>Choose game</option>
+		</select>
+		<hr>
+		<h2>Mamba Game <span id="game-id">---</span></h2>
+		Address: <span id ="game-addr">xxx</span></br>
+		Open time: <span id ="game-open-time">xxx</span></br>
+		Close time: <span id ="game-close-time">xxx</span></br>
+		Game duration per unit: <span id ="game-duration">xxx</span> ms</br>
+		A: <span id ="game-a">xxx</span></br>
+		B: <span id ="game-b">xxx</span></br>
+		Tx Fee: <span id ="game-txfee">xxx</span></br>
+		Minimum Difference Bets For Winner: <span id ="game-min-diff-bets">xxx</span> ether</br>
+		Time stamp of starting exrate: <span id ="game-time-start-exrate">xxx</span></br>
+		Time stamp of ending exrate: <span id ="game-time-end-exrate">xxx</span></br>
+		Is Closed: <span id ="game-isclosed">xxx</span></br>
+		Minimum bets: <span id ="game-min-bets">xxx</span> ether</br>
+		Hidden Time Length Before Game Closed: <span id ="game-hidden-time">xxx</span> ms</br>
+		Wallet for Receiving fee: <span id ="game-wallet">xxx</span></br>
+		Y Distribution Length: <span id="game-y-dist-length">xxx</span></br>	
+		Y Distribution: [<span id="game-y-dist">xxx</span>]</br>
+		Winner ids: <span id="game-winner"></span></br>
+		<p>
+		<strong>Coin 0</strong></br>
+		Name: <span id ="coins-0-name">xxx</span></br>
+		Start Exrate: <span id ="coins-0-start-exrate">xxx</span></br>
+		End Exrate: <span id ="coins-0-end-exrate">xxx</span></br>
+		Total bets: <span id ="coins-0-total-bets">xxx</span> ether</br>
+		Largest bets: <span id ="coins-0-largest-bets">xxx</span> ether</br>
+		Number of bets: <span id ="coins-0-number-of-bets">xxx</span></br>
+		<p>
+		<strong>Coin 1</strong></br>
+		Name: <span id ="coins-1-name">xxx</span></br>
+		Start Exrate: <span id ="coins-1-start-exrate">xxx</span></br>
+		End Exrate: <span id ="coins-1-end-exrate">xxx</span></br>
+		Total bets: <span id ="coins-1-total-bets">xxx</span> ether</br>
+		Largest bets: <span id ="coins-1-largest-bets">xxx</span> ether</br>
+		Number of bets: <span id ="coins-1-number-of-bets">xxx</span></br>
+		<p>
+		<strong>Coin 2</strong></br>
+		Name: <span id ="coins-2-name">xxx</span></br>
+		Start Exrate: <span id ="coins-2-start-exrate">xxx</span></br>
+		End Exrate: <span id ="coins-2-end-exrate">xxx</span></br>
+		Total bets: <span id ="coins-2-total-bets">xxx</span> ether</br>
+		Largest bets: <span id ="coins-2-largest-bets">xxx</span> ether</br>
+		Number of bets: <span id ="coins-2-number-of-bets">xxx</span></br>
+		<p>
+		<strong>Coin 3</strong></br>
+		Name: <span id ="coins-3-name">xxx</span></br>
+		Start Exrate: <span id ="coins-3-start-exrate">xxx</span></br>
+		End Exrate: <span id ="coins-3-end-exrate">xxx</span></br>
+		Total bets: <span id ="coins-3-total-bets">xxx</span> ether</br>
+		Largest bets: <span id ="coins-3-largest-bets">xxx</span> ether</br>
+		Number of bets: <span id ="coins-3-number-of-bets">xxx</span></br>
+		<p>
+		<strong>Coin 4</strong></br>
+		Name: <span id ="coins-4-name">xxx</span></br>
+		Start Exrate: <span id ="coins-4-start-exrate">xxx</span></br>
+		End Exrate: <span id ="coins-4-end-exrate">xxx</span></br>
+		Total bets: <span id ="coins-4-total-bets">xxx</span> ether</br>
+		Largest bets: <span id ="coins-4-largest-bets">xxx</span> ether</br>
+		Number of bets: <span id ="coins-4-number-of-bets">xxx</span></br>
+		
+		<hr/>
+		Events: <span id="game-event"></span>
+	</body>
+</html>
 
-是緣份乎雙人伴相隨　 是命運伊將咱來放離
-風吹一山過一山　 找無心愛的形影　 吹袂透我心內孤單
 
-人若是疼著一個無心的人　 情茫茫望你半生通也不通
-像東流水　 綿綿相思　 多情多怨嘆　 又擱想起
-
-人若是疼著一個無心的人　當作是註定紅塵一場戀夢
-偏偏為你　 夢也相思　 誰的人　 誰疼痛　 繁華攏是夢
