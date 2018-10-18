@@ -28,6 +28,7 @@ window.addEventListener('load', function () {
 					game.unsubscribe('Bet');
 					game.unsubscribe('LargestBetChanged');
 					game.unsubscribe('SendAwards');
+					game.unsubscribe('ExrateUpdated');
 				} 
 				
 				game = fetchGame;
@@ -89,6 +90,10 @@ window.addEventListener('load', function () {
 				
 				game.subscribe('SendAwards', function (playerAddress, awards) {
 					document.getElementById("game-event").innerHTML += '"SendAwards", ' + awards + ' ether to ' + playerAddress + '. ' + new Date() + '</br>';
+				});
+				
+				game.subscribe('ExrateUpdated', function (coinId, exrate) {
+					document.getElementById("coins-" + coinId + "-current-exrate").innerHTML = exrate;
 				});
 			});
 		});

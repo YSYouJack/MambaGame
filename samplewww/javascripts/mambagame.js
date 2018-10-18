@@ -22,6 +22,7 @@
 			, 'Bet': null
 			, 'LargestBetChanged': null
 			, 'SendAwards': null
+			, 'ExrateUpdated': null
 		};
 	}
 	
@@ -340,6 +341,51 @@
 				}
 			});
 			
+			function openBinanceWss() {
+				var wsUrl = "wss://stream.binance.com:9443/stream?streams=";
+				for (let i = 0; i < obj.coins.length; ++i) {
+					if (i != 0) {
+						wsUrl += '/';
+					}
+					wsUrl += obj.coins[i].name.toLowerCase() + 'usdt@miniTicker';
+				}
+				
+				var ws = new WebSocket(wsUrl);
+				
+				ws.onopen = function () {
+					console.log("ws.open");
+					console.log(wsUrl);
+				}
+				
+				ws.onmessage = function(event) {
+					let msg = JSON.parse(event.data);
+					for (let i = 0; i < obj.coins.length; ++i) {
+						let symbol = obj.coins[i].name.toUpperCase() + 'USDT';
+						if (symbol === msg.data.s) {
+							obj.callbackForUpdateExrate(i, Number.parseFloat(msg.data.c));
+							break;
+						}
+					}
+				};
+			
+				ws.onclose = function() {
+					console.log("ws.onclose");
+					ws.removeAllListeners();
+					ws = openBinanceWss();
+				};
+			
+				ws.onerror = function(error) {
+					console.log("ws.onerror: " + error);
+					ws.removeAllListeners();
+					ws = openBinanceWss();
+				};
+				
+				return ws;
+			}
+			
+			
+			openBinanceWss();
+			
 		}).catch(function (error) {
 			if (obj.teamWallet) {
 				delete obj.teamWallet;
@@ -560,11 +606,20 @@
 		}
 	}
 	
+	MambaGame.prototype.callbackForUpdateExrate = function (coinId, price) {
+		this.coins[coinId].currentExRate = price;
+		 
+		console.log(coinId, price);
+		if (this.cb['ExrateUpdated']) {
+			this.cb['ExrateUpdated'](coinId, price);
+		}
+	}
+	
 	// Mamba game manager definition.
 	var mambaGameManager = {
 		isInited: false
 		, abi: [{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"games","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"teamWallet","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"renounceOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"isOwner","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"game","type":"address"}],"name":"addGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"numberOfGames","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"_teamWallet","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameAddr","type":"address"},{"indexed":false,"name":"openTime","type":"uint256"}],"name":"GameAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"}],"name":"OwnershipRenounced","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"},{"indexed":true,"name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"}]
-		, address: '0x6c3a8a952d564ac7bc1a80866355fed85d46cb43'
+		, address: '0x3aa10a4f6b789b44c12cb4dfe91a5b920eae3349'
 		, init: function () {
 			return new Promise(function (resolve, reject) {
 				if (typeof web3 === 'undefined') {
