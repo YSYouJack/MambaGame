@@ -621,16 +621,24 @@
 		, abi: [{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"games","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"teamWallet","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"renounceOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"isOwner","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"game","type":"address"}],"name":"addGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"numberOfGames","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"_teamWallet","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameAddr","type":"address"},{"indexed":false,"name":"openTime","type":"uint256"}],"name":"GameAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"}],"name":"OwnershipRenounced","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"},{"indexed":true,"name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"}]
 		, address: '0x3aa10a4f6b789b44c12cb4dfe91a5b920eae3349'
 		, init: function () {
-			return new Promise(function (resolve, reject) {
-				if (typeof web3 === 'undefined') {
-					reject("MetaMask is not found.");
-				} else if (web3.eth.accounts.length == 0) {
-					reject("MetaMask is locked or no available accounts.");
+			let promise = null;
+			if (window.ethereum) {
+				window.web3 = new Web3(ethereum);
+				promise = ethereum.enable();
+			} else if (window.web3) {
+				if (web3.eth.accounts.length == 0) {
+					promise = Promise.reject("MetaMask is locked or no available accounts.");
 				} else {
-					var Contract = web3.eth.contract(mambaGameManager.abi);
-					mambaGameManager.contract = Contract.at(mambaGameManager.address);
-					resolve();
+					promise = Promise.resolve();
 				}
+			} else {
+				promise = Promise.reject('Non-Ethereum browser detected. You should consider trying MetaMask!');
+			}
+			
+			return promise.then(function () {
+				var Contract = web3.eth.contract(mambaGameManager.abi);
+				mambaGameManager.contract = Contract.at(mambaGameManager.address);
+				return Promise.resolve();
 			}).then(function () {
 				return new Promise(function (resolve, reject) {
 					web3.eth.getBlockNumber(function (error, result) {
