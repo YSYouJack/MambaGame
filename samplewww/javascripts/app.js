@@ -68,7 +68,7 @@ window.addEventListener('load', function () {
 					document.getElementById("game-time-end-exrate").innerHTML = closeTime;
 				});
 				
-				game.subscribe('Closed', function (closeTime) {
+				game.subscribe('Closed', function () {
 					document.getElementById("game-event").innerHTML += '"Closed" ' + new Date() + '</br>';
 					document.getElementById("game-close-time").innerHTML = game.timeStampOfEndRate;
 					for(let i = 0; i < game.coins.length; ++i) {

@@ -69,6 +69,7 @@
 							obj.coins.push({
 								name: result[0]
 								, startExRate: result[1].toNumber() / 100
+								, currentExRate: result[1].toNumber() / 100
 								, endExRate: result[2].toNumber() / 100
 							});
 							resolve();
@@ -707,6 +708,10 @@
 				
 				if (mambaGameManager.contract) {
 					delete mambaGameManager.contract;
+				}
+				
+				if (mambaGameManager.initBlockNumber) {
+					delete mambaGameManager.initBlockNumber;
 				}
 				
 				return Promise.reject(error);
