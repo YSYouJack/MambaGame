@@ -109,8 +109,7 @@ contract('MambaGameTest', function(accounts) {
 		assert.ok(isAlive);
 		
 		// First bet.
-		await game.bet("0", accounts[1]
-			, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[1]});
 			
 		let netBets0 = Web3.utils.toBN(Web3.utils.toWei("9950", "microether"));
 		let coinbets = await game.getCoinBetData.call(0);
@@ -119,8 +118,7 @@ contract('MambaGameTest', function(accounts) {
 		assert.ok(coinbets[2].eq(1));       // numberOfBets
 		
 		// Same largest bet on same coin.
-		await game.bet("0", accounts[2]
-			, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[2]});
 			
 		coinbets = await game.getCoinBetData.call(0);
 		assert.ok(coinbets[0].eq(netBets0.add(netBets0))); // totalBets
@@ -128,8 +126,7 @@ contract('MambaGameTest', function(accounts) {
 		assert.ok(coinbets[2].eq(2));       // numberOfBets
 		
 		// Another bigger bet on same coin.
-		await game.bet("0", accounts[3]
-			, {value: web3.toWei(100, "finney"), from: accounts[3]});
+		await game.bet("0", {value: web3.toWei(100, "finney"), from: accounts[3]});
 			
 		let netBets1 = Web3.utils.toBN(Web3.utils.toWei("99500", "microether"));
 		coinbets = await game.getCoinBetData.call(0);
@@ -138,8 +135,7 @@ contract('MambaGameTest', function(accounts) {
 		assert.ok(coinbets[2].eq(3));        // numberOfBets
 		
 		// Change bet to another coins
-		await game.bet("1", accounts[4]
-			, {value: web3.toWei(100, "finney"), from: accounts[4]});
+		await game.bet("1", {value: web3.toWei(100, "finney"), from: accounts[4]});
 			
 		coinbets = await game.getCoinBetData.call(1);
 		assert.ok(coinbets[0].eq(netBets1)); // totalBets
@@ -156,27 +152,21 @@ contract('MambaGameTest', function(accounts) {
 		let isAlive = await game.isAlive.call();
 		assert.ok(isAlive);
 		
+		// Bets.
+		let bets = [];
+		bets.push(game.bet("0", {value: web3.toWei(30, "finney"), from: accounts[7]}));
+		bets.push(game.bet("0", {value: web3.toWei(30, "finney"), from: accounts[8]}));
+		bets.push(game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[9]}));
+		bets.push(game.bet("1", {value: web3.toWei(10, "finney"), from: accounts[1]}));
+		bets.push(game.bet("2", {value: web3.toWei(10, "finney"), from: accounts[2]}));
+		bets.push(game.bet("3", {value: web3.toWei(10, "finney"), from: accounts[3]}));
+		
+		await Promise.all(bets);
+		
 		// Get balance at beginning.
 		let balanceBegin0 = web3.eth.getBalance(accounts[7]);
 		let balanceBegin1 = web3.eth.getBalance(accounts[8]);
 		let balanceBegin2 = web3.eth.getBalance(accounts[9]);
-		
-		// Bets.
-		let bets = [];
-		bets.push(game.bet("0", accounts[7], {value: web3.toWei(30, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[8], {value: web3.toWei(30, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[9], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		
-		await Promise.all(bets);
 		
 		// Close the game.
 		let endExRate = [200 // 100%
@@ -267,27 +257,21 @@ contract('MambaGameTest', function(accounts) {
 		let isAlive = await game.isAlive.call();
 		assert.ok(isAlive);
 		
+		// Bets.
+		let bets = [];
+		bets.push(game.bet("0", {value: web3.toWei(30, "finney"), from: accounts[7]}));
+		bets.push(game.bet("0", {value: web3.toWei(30, "finney"), from: accounts[8]}));
+		bets.push(game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[9]}));
+		bets.push(game.bet("1", {value: web3.toWei(10, "finney"), from: accounts[1]}));
+		bets.push(game.bet("2", {value: web3.toWei(10, "finney"), from: accounts[2]}));
+		bets.push(game.bet("3", {value: web3.toWei(10, "finney"), from: accounts[3]}));
+		
+		await Promise.all(bets);
+		
 		// Get balance at beginning.
 		let balanceBegin0 = web3.eth.getBalance(accounts[7]);
 		let balanceBegin1 = web3.eth.getBalance(accounts[8]);
 		let balanceBegin2 = web3.eth.getBalance(accounts[9]);
-		
-		// Bets.
-		let bets = [];
-		bets.push(game.bet("0", accounts[7], {value: web3.toWei(30, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[8], {value: web3.toWei(30, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[9], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		
-		await Promise.all(bets);
 		
 		// Set Y to zero.
 		await game.setYToZero({from: accounts[0]});
@@ -381,29 +365,22 @@ contract('MambaGameTest', function(accounts) {
 		let isAlive = await game.isAlive.call();
 		assert.ok(isAlive);
 		
+		// Bets.
+		let bets = [];
+		bets.push(game.bet("0", {value: web3.toWei(30, "finney"), from: accounts[7]}));
+		bets.push(game.bet("0", {value: web3.toWei(20, "finney"), from: accounts[8]}));
+		bets.push(game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[9]}));
+		bets.push(game.bet("1", {value: web3.toWei(10, "finney"), from: accounts[1]}));
+		bets.push(game.bet("2", {value: web3.toWei(10, "finney"), from: accounts[2]}));
+		bets.push(game.bet("3", {value: web3.toWei(10, "finney"), from: accounts[3]}));
+		bets.push(game.bet("4", {value: web3.toWei(10, "finney"), from: accounts[4]}));
+		
+		await Promise.all(bets);
+		
 		// Get balance at beginning.
 		let balanceBegin0 = web3.eth.getBalance(accounts[7]);
 		let balanceBegin1 = web3.eth.getBalance(accounts[8]);
 		let balanceBegin2 = web3.eth.getBalance(accounts[9]);
-		
-		// Bets.
-		let bets = [];
-		bets.push(game.bet("0", accounts[7], {value: web3.toWei(30, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[8], {value: web3.toWei(20, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[9], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("4", accounts[4], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		
-		await Promise.all(bets);
 		
 		// Close the game.
 		let endExRate = [50 // -50%
@@ -493,29 +470,22 @@ contract('MambaGameTest', function(accounts) {
 		let isAlive = await game.isAlive.call();
 		assert.ok(isAlive);
 		
+		// Bets.
+		let bets = [];
+		bets.push(game.bet("0", {value: web3.toWei(30, "finney"), from: accounts[7]}));
+		bets.push(game.bet("0", {value: web3.toWei(20, "finney"), from: accounts[8]}));
+		bets.push(game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[9]}));
+		bets.push(game.bet("1", {value: web3.toWei(10, "finney"), from: accounts[1]}));
+		bets.push(game.bet("2", {value: web3.toWei(10, "finney"), from: accounts[2]}));
+		bets.push(game.bet("3", {value: web3.toWei(10, "finney"), from: accounts[3]}));
+		bets.push(game.bet("4", {value: web3.toWei(10, "finney"), from: accounts[4]}));
+		
+		await Promise.all(bets);
+		
 		// Get balance at beginning.
 		let balanceBegin0 = web3.eth.getBalance(accounts[7]);
 		let balanceBegin1 = web3.eth.getBalance(accounts[8]);
 		let balanceBegin2 = web3.eth.getBalance(accounts[9]);
-		
-		// Bets.
-		let bets = [];
-		bets.push(game.bet("0", accounts[7], {value: web3.toWei(30, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[8], {value: web3.toWei(20, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[9], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("4", accounts[4], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		
-		await Promise.all(bets);
 		
 		// Close the game.
 		let endExRate = [100 // 0%
@@ -605,30 +575,23 @@ contract('MambaGameTest', function(accounts) {
 		let isAlive = await game.isAlive.call();
 		assert.ok(isAlive);
 		
+		// Bets.
+		let bets = [];
+		bets.push(game.bet("0", {value: web3.toWei(30, "finney"), from: accounts[7]}));
+		bets.push(game.bet("0", {value: web3.toWei(20, "finney"), from: accounts[8]}));
+		bets.push(game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[9]}));
+		bets.push(game.bet("1", {value: web3.toWei(10, "finney"), from: accounts[1]}));
+		bets.push(game.bet("2", {value: web3.toWei(10, "finney"), from: accounts[2]}));
+		bets.push(game.bet("3", {value: web3.toWei(10, "finney"), from: accounts[3]}));
+		bets.push(game.bet("4", {value: web3.toWei(10, "finney"), from: accounts[4]}));
+		
+		await Promise.all(bets);
+		
 		// Get balance at beginning.
 		let balanceBegin0 = web3.eth.getBalance(accounts[7]);
 		let balanceBegin1 = web3.eth.getBalance(accounts[8]);
 		let balanceBegin2 = web3.eth.getBalance(accounts[9]);
 		let balanceBegin3 = web3.eth.getBalance(accounts[4]);
-		
-		// Bets.
-		let bets = [];
-		bets.push(game.bet("0", accounts[7], {value: web3.toWei(30, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[8], {value: web3.toWei(20, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("0", accounts[9], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("4", accounts[4], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		
-		await Promise.all(bets);
 		
 		// Close the game.
 		let endExRate = [120 // 20%
@@ -727,16 +690,11 @@ contract('MambaGameTest', function(accounts) {
 		
 		// Bets.
 		let bets = [];
-		bets.push(game.bet("0", accounts[7], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("4", accounts[4], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
+		bets.push(game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[7]}));
+		bets.push(game.bet("1", {value: web3.toWei(10, "finney"), from: accounts[1]}));
+		bets.push(game.bet("2", {value: web3.toWei(10, "finney"), from: accounts[2]}));
+		bets.push(game.bet("3", {value: web3.toWei(10, "finney"), from: accounts[3]}));
+		bets.push(game.bet("4", {value: web3.toWei(10, "finney"), from: accounts[4]}));
 		
 		await Promise.all(bets);
 		
@@ -800,16 +758,11 @@ contract('MambaGameTest', function(accounts) {
 		
 		// Bets.
 		let bets = [];
-		bets.push(game.bet("0", accounts[7], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("4", accounts[4], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
+		bets.push(game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[7]}));
+		bets.push(game.bet("1", {value: web3.toWei(10, "finney"), from: accounts[1]}));
+		bets.push(game.bet("2", {value: web3.toWei(10, "finney"), from: accounts[2]}));
+		bets.push(game.bet("3", {value: web3.toWei(10, "finney"), from: accounts[3]}));
+		bets.push(game.bet("4", {value: web3.toWei(10, "finney"), from: accounts[4]}));
 		
 		await Promise.all(bets);
 		
@@ -871,23 +824,18 @@ contract('MambaGameTest', function(accounts) {
 		let isAlive = await game.isAlive.call();
 		assert.ok(isAlive);
 		
-		// Get balance at beginning.
-		let balanceBegin0 = web3.eth.getBalance(accounts[7]);
-		
 		// Bets.
 		let bets = [];
-		bets.push(game.bet("0", accounts[7], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("1", accounts[1], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("2", accounts[2], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("3", accounts[3], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
-		bets.push(game.bet("4", accounts[4], {value: web3.toWei(10, "finney")
-			, from: accounts[0]}));
+		bets.push(game.bet("0", {value: web3.toWei(10, "finney"), from: accounts[7]}));
+		bets.push(game.bet("1", {value: web3.toWei(10, "finney"), from: accounts[1]}));
+		bets.push(game.bet("2", {value: web3.toWei(10, "finney"), from: accounts[2]}));
+		bets.push(game.bet("3", {value: web3.toWei(10, "finney"), from: accounts[3]}));
+		bets.push(game.bet("4", {value: web3.toWei(10, "finney"), from: accounts[4]}));
 		
 		await Promise.all(bets);
+		
+		// Get balance at beginning.
+		let balanceBegin0 = web3.eth.getBalance(accounts[7]);
 		
 		// Close the game.
 		let endExRate = [100 // 0%

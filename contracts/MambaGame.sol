@@ -313,11 +313,10 @@ contract MambaGame is Ownable {
 		return now >= openTime && now <= closeTime;
 	}
 	
-	function bet(uint256 _id, address _player) public payable {
+	function bet(uint256 _id) public payable {
 	    require(msg.value >= MIN_BET);
 	    require(_id < 5);
-	    require(now >= openTime && now <= closeTime); 
-	    require(_player != address(0) && _player != address(this));
+	    require(now >= openTime && now <= closeTime);
 	    
 	    uint256 txFeeAmount = msg.value.mul(txFee).div(1000);
 	    uint256 betAmount = msg.value.sub(txFeeAmount);
@@ -332,7 +331,7 @@ contract MambaGame is Ownable {
 	    uint256 betId = c.bets.length++;
 	    Bet storage b = c.bets[betId];
 	    
-	    b.player = _player;
+	    b.player = msg.sender;
 	    b.amount = betAmount;
 	    
         if (betAmount > largestBets) {
@@ -343,7 +342,7 @@ contract MambaGame is Ownable {
             c.largestBetIds.push(betId);
         }
         
-        emit CoinBet(_id, _player, betAmount);
+        emit CoinBet(_id, msg.sender, betAmount);
 	}
 	
 	function close(int32[5] _endExRate, uint256 _timeStampOfEndRate) 

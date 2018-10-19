@@ -9,6 +9,11 @@ window.addEventListener('load', function () {
 		mambaGameManager.subscribeForNewGame(function (numberOfGames) {
 			document.getElementById("number-of-games").innerHTML = numberOfGames;
 			document.getElementById("game-event").innerHTML += 'New Game. ' + new Date() + '</br>';
+			
+			var opt = document.createElement('option');
+			opt.value = numberOfGames - 1;
+			opt.innerHTML = numberOfGames - 1;
+			document.getElementById("game-selector").add(opt);
 		});
 		
 		let el = document.getElementById("game-selector");
@@ -20,6 +25,10 @@ window.addEventListener('load', function () {
 			event.preventDefault();
 			
 			let gameId = parseInt(event.currentTarget.value);
+			if (typeof gameId === 'undefined') {
+				return;
+			}
+			
 			mambaGameManager.game(gameId)
 			.then(function (fetchGame) {
 				if (game) {
@@ -95,8 +104,20 @@ window.addEventListener('load', function () {
 				game.subscribe('ExrateUpdated', function (coinId, exrate) {
 					document.getElementById("coins-" + coinId + "-current-exrate").innerHTML = exrate;
 				});
+				
+				document.getElementById("bet-form-submit-btn").disabled = false;
+				document.getElementById("bet-form").addEventListener('submit', function (event) {
+					event.preventDefault();
+					let coinId = document.getElementById("coin-id-selector").value;
+					let bets = document.getElementById("bet-amount").value;
+					game.bet(coinId, bets).then(function () {
+						console.log("Bets on " + coinId + ".");
+					}).catch(console.error);
+				});
 			});
 		});
+		
+		
 		
 	}).catch(console.error);
 	

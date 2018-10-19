@@ -33,6 +33,22 @@
 		Y Distribution Length: <span id="game-y-dist-length">xxx</span></br>	
 		Y Distribution: [<span id="game-y-dist">xxx</span>]</br>
 		Winner ids: <span id="game-winner"></span></br>
+		<form id="bet-form">
+			<label for="coin-id-selector">Coin Id:</label>
+			<select id="coin-id-selector" required>
+				<option value="" disabled selected>---</option>
+				<option value="0">0</option>
+				<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+			</select>
+			<label for="bet-amount">Ether</label>
+			<input type="number" step="any" id="bet-amount" value="0.1" required>
+			<button type="submit" id="bet-form-submit-btn" disabled>Bet</button>
+		</form>
+		
+		
 		<p>
 		<strong>Coin 0</strong></br>
 		Name: <span id ="coins-0-name">xxx</span></br>
