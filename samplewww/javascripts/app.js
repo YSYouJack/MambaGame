@@ -46,6 +46,7 @@ window.addEventListener('load', function () {
 				document.getElementById("game-open-time").innerHTML = game.openTime;
 				document.getElementById("game-close-time").innerHTML = game.closeTime;
 				document.getElementById("game-duration").innerHTML = game.duration;
+				document.getElementById("game-y").innerHTML = game.Y;
 				document.getElementById("game-a").innerHTML = game.A;
 				document.getElementById("game-b").innerHTML = game.B;
 				document.getElementById("game-txfee").innerHTML = game.txFee;
@@ -79,7 +80,8 @@ window.addEventListener('load', function () {
 				
 				game.subscribe('Closed', function () {
 					document.getElementById("game-event").innerHTML += '"Closed" ' + new Date() + '</br>';
-					document.getElementById("game-time-end-exrate").innerHTML = game.timeStampOfEndRate;;
+					document.getElementById("game-time-end-exrate").innerHTML = game.timeStampOfEndRate;
+					document.getElementById("game-y").innerHTML = game.Y;
 					for(let i = 0; i < game.coins.length; ++i) {
 						document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 					}

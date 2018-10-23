@@ -41,10 +41,10 @@
 					obj.openTime = new Date(1000 * result[1].toNumber());
 					obj.closeTime = new Date(1000 * result[2].toNumber());
 					obj.duration = 1000 * result[3].toNumber();
-					obj.Y = result[4].toString() + '%';
-					obj.A = result[5].toString() + '%';
-					obj.B = result[6].toString() + '%';
-					obj.txFee = result[7].toNumber() / 10 + '%';
+					obj.Y = result[4].toNumber();
+					obj.A = result[5].toNumber();
+					obj.B = result[6].toNumber();
+					obj.txFee = result[7].toNumber() / 10;
 					obj.minimumDifferenceBetsForWinner = web3.fromWei(result[8].toString(), 'ether');
 					obj.timeStampOfStartRate = new Date(1000 * result[9].toNumber());
 					if (!result[10].isZero()) {
