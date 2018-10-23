@@ -23,37 +23,55 @@ contract MambaGame is Ownable {
 	    Bet[] bets;
 	}
 	
-	uint256 public openTime;
-	uint256 public closeTime;
-	uint256 public gameDuration;
-	Coin[5] public coins;
-	uint8[50] public YDistribution;
-	uint8 public Y;
-	uint8 public A;
-	uint8 public B;
-	uint16 public txFee;
-	uint256 public minDiffBets;
-	uint256 public timeStampOfStartRate;
-	uint256 public timeStampOfEndRate;
-	bool public isClosed = false;
+	struct GameData {
+	    uint256 id;
+	    
+	    uint256 openTime;
+	    uint256 closeTime;
+	    uint256 gameDuration;
+	    
+	    uint8[50] YDistribution;
+	    uint8 Y;
+	    uint8 A;
+	    uint8 B;
+	    uint16 txFee;
+	    uint256 minDiffBets;
+	    uint256 timeStampOfStartRate;
+	    uint256 timeStampOfEndRate;
+	    
+	    bool isClosed;
+	    uint256[] winnerCoinIds;
+	    
+	    Coin[5] coins;
+	}
 	
-	uint256[] public winnerCoinIds;
+	struct GameHideableData {
+	    CoinBets[5] coinbets;
+	}
+	
+	address public teamWallet;
+	
+	GameData[] public gameData;
+	GameHideableData[] gameHideableData;
 	
 	uint256 public MIN_BET = 10 finney; // 0.01 ether.
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
 	
-	address public teamWallet;
+	event Closed(uint256 indexed gameId);
+	event Extended(uint256 indexed gameId);
+	event CoinBet(uint256 indexed gameId, uint256 indexed coinId, address player, uint256 bets);
+	event CoinLargestBet(uint256 indexed gameId, uint256 indexed coinId, uint256 bets);
+	event SendAwards(uint256 indexed gameId, address player, uint256 awards);
+	event SendRemainAwards(uint256 indexed gameId, address teamWallet, uint256 awards);
+	event GameCreated(uint256 gameId, uint256 openTime);
 	
-	CoinBets[5] _coinbets;
+	constructor(address _teamWallet) public
+	{
+	    require(_teamWallet != address(0));
+		teamWallet = _teamWallet;
+	}
 	
-	event Closed();
-	event Extended();
-	event CoinBet(uint256 coinId, address indexed player, uint256 bets);
-	event CoinLargestBet(uint256 coinId, uint256 bets);
-	event SendAwards(address indexed player, uint256 awards);
-	event SendRemainAwards(address indexed teamWallet, uint256 awards);
-	
-	constructor(uint256 _openTime
+	function createNewGame(uint256 _openTime
 		, uint256 _gameDuration
 		, string _coinName0
 		, string _coinName1
@@ -66,87 +84,8 @@ contract MambaGame is Ownable {
 		, uint8 _A
 		, uint8 _B
 		, uint16 _txFee
-		, uint256 _minDiffBets
-		, address _teamWallet) public
-	/*
-	constructor() public
-	*/
+		, uint256 _minDiffBets) onlyOwner public
 	{
-	    /*
-	    uint256 _openTime = now;
-	    uint256 _gameDuration = 300;
-	    
-	    string memory _coinName0 = "Coin0";
-	    string memory _coinName1 = "Coin1";
-	    string memory _coinName2 = "Coin2";
-	    string memory _coinName3 = "Coin3";
-	    string memory _coinName4 = "Coin4";
-	    uint8 _A = 10;
-		uint8 _B = 20;
-		uint256 _exRateTimeStamp = now;
-		uint16 _txFee = 5;
-		uint256 _minDiffBets = 0.1 ether;
-		address _teamWallet = msg.sender;
-		
-		int32[5] memory _startExRate;
-        _startExRate[0] = 10000;
-        _startExRate[1] = 20000;
-        _startExRate[2] = 30000;
-        _startExRate[3] = 40000;
-        _startExRate[4] = 50000;
-	    
-	    uint8[50] memory _YDistribution;
-	    _YDistribution[0] = 1;
-	    _YDistribution[1] = 2;
-	    _YDistribution[2] = 3;
-	    _YDistribution[3] = 4;
-	    _YDistribution[4] = 5;
-	    _YDistribution[5] = 6;
-	    _YDistribution[6] = 7;
-	    _YDistribution[7] = 8;
-	    _YDistribution[8] = 9;
-	    _YDistribution[9] = 10;
-	    _YDistribution[10] = 1;
-	    _YDistribution[11] = 2;
-	    _YDistribution[12] = 3;
-	    _YDistribution[13] = 4;
-	    _YDistribution[14] = 5;
-	    _YDistribution[15] = 6;
-	    _YDistribution[16] = 7;
-	    _YDistribution[17] = 8;
-	    _YDistribution[18] = 9;
-	    _YDistribution[19] = 10;
-	    _YDistribution[20] = 1;
-	    _YDistribution[21] = 2;
-	    _YDistribution[22] = 3;
-	    _YDistribution[23] = 4;
-	    _YDistribution[24] = 5;
-	    _YDistribution[25] = 6;
-	    _YDistribution[26] = 7;
-	    _YDistribution[27] = 8;
-	    _YDistribution[28] = 9;
-	    _YDistribution[29] = 10;
-	    _YDistribution[30] = 1;
-	    _YDistribution[31] = 2;
-	    _YDistribution[32] = 3;
-	    _YDistribution[33] = 4;
-	    _YDistribution[34] = 5;
-	    _YDistribution[35] = 6;
-	    _YDistribution[36] = 7;
-	    _YDistribution[37] = 8;
-	    _YDistribution[38] = 9;
-	    _YDistribution[39] = 10;
-	    _YDistribution[40] = 1;
-	    _YDistribution[41] = 2;
-	    _YDistribution[42] = 3;
-	    _YDistribution[43] = 4;
-	    _YDistribution[44] = 5;
-	    _YDistribution[45] = 6;
-	    _YDistribution[46] = 7;
-	    _YDistribution[47] = 8;
-	    _YDistribution[48] = 9;
-	    _YDistribution[49] = 10;
-	    */
 	    // Check inputs.
 		require(_A <= 100 && _B <= 100 && _A + _B <= 100);
 		
@@ -212,118 +151,137 @@ contract MambaGame is Ownable {
 		
 		require(_txFee <= 1000); // < 100%
 		
-		// Create new games.
+		if (0 != gameData.length) {
+	        require(gameData[gameData.length - 1].isClosed);
+	    }
 		
-		openTime = _openTime;
-		closeTime = _openTime + _gameDuration;
-		gameDuration = _gameDuration;
-		timeStampOfStartRate = _exRateTimeStamp;
+		// Create new game data.
+		gameData.length++;
+		gameHideableData.length++;
+		GameData storage game = gameData[gameData.length - 1];
 		
-		coins[0].name = _coinName0;
-		coins[0].startExRate = _startExRate[0];
+		game.id = gameData.length - 1;
+		game.openTime = _openTime;
+		game.closeTime = _openTime + _gameDuration;
+		game.gameDuration = _gameDuration;
+		game.timeStampOfStartRate = _exRateTimeStamp;
 		
-		coins[1].name = _coinName1;
-		coins[1].startExRate = _startExRate[1];
+		game.coins[0].name = _coinName0;
+		game.coins[0].startExRate = _startExRate[0];
 		
-		coins[2].name = _coinName2;
-		coins[2].startExRate = _startExRate[2];
+		game.coins[1].name = _coinName1;
+		game.coins[1].startExRate = _startExRate[1];
 		
-		coins[3].name = _coinName3;
-		coins[3].startExRate = _startExRate[3];
+		game.coins[2].name = _coinName2;
+		game.coins[2].startExRate = _startExRate[2];
 		
-		coins[4].name = _coinName4;
-		coins[4].startExRate = _startExRate[4];
+		game.coins[3].name = _coinName3;
+		game.coins[3].startExRate = _startExRate[3];
 		
-		YDistribution = _YDistribution;
-		A = _A;
-		B = _B;
-		txFee = _txFee;
-		teamWallet = _teamWallet;
-		minDiffBets = _minDiffBets;
+		game.coins[4].name = _coinName4;
+		game.coins[4].startExRate = _startExRate[4];
+		
+		game.YDistribution = _YDistribution;
+		game.A = _A;
+		game.B = _B;
+		game.txFee = _txFee;
+		game.minDiffBets = _minDiffBets;
+		game.isClosed = false;
+		
+		emit GameCreated(gameData.length - 1, game.openTime);
 	}
 	
-	/*
-	function testExtend() public {
-	    closeTime = closeTime.add(gameDuration);
-		emit Extended();
+	function numberOfGameData() public view returns (uint256) {
+        return gameData.length;
+    }
+    
+    function getGameYDistribution(uint256 _gameId) public view returns (uint8[50]) {
+        require(_gameId < gameData.length);
+        GameData storage game = gameData[_gameId];
+        return game.YDistribution;
+    }
+    
+    function getNumberOfWinnerCoinIds(uint256 _gameId) public view returns (uint256) {
+        require(_gameId < gameData.length);
+        GameData storage game = gameData[_gameId];
+        return game.winnerCoinIds.length;
+    }
+    
+    function getWinnerCoinIds(uint256 _gameId, uint256 _winnerId) public view returns (uint256) {
+        require(_gameId < gameData.length);
+        
+        GameData storage game = gameData[_gameId];
+        require(_winnerId < game.winnerCoinIds.length);
+        
+        return game.winnerCoinIds[_winnerId];
+    }
+    
+    function getGameCoinData(uint256 _gameId)
+	    public 
+	    view 
+	    returns (string coinName0, string coinName1, string coinName2, string coinName3, string coinName4
+	        , int32[5] startExRate, int32[5] endExRate)
+	{
+	    require(_gameId < gameData.length);
+	    
+	    GameData storage game = gameData[_gameId];
+	    
+	    coinName0 = game.coins[0].name;
+	    startExRate[0] = game.coins[0].startExRate;
+	    endExRate[0] = game.coins[0].endExRate;
+	    
+	    coinName1 = game.coins[1].name;
+	    startExRate[1] = game.coins[1].startExRate;
+	    endExRate[1] = game.coins[1].endExRate;
+	    
+	    coinName2 = game.coins[2].name;
+	    startExRate[2] = game.coins[2].startExRate;
+	    endExRate[2] = game.coins[2].endExRate;
+	    
+	    coinName3 = game.coins[3].name;
+	    startExRate[3] = game.coins[3].startExRate;
+	    endExRate[3] = game.coins[3].endExRate;
+	    
+	    coinName4 = game.coins[4].name;
+	    startExRate[4] = game.coins[4].startExRate;
+	    endExRate[4] = game.coins[4].endExRate;
 	}
-	
-	function testClosed(int32 _id) public {
-	    timeStampOfEndRate = now;
-		coins[0].endExRate = _id * 10000 + 1;
-		coins[1].endExRate = _id * 10000 + 2;
-		coins[2].endExRate = _id * 10000 + 3;
-		coins[3].endExRate = _id * 10000 + 4;
-		coins[4].endExRate = _id * 10000 + 5;
-		
-		if (0 == _id) {
-		    winnerCoinIds.length = 2;
-		    winnerCoinIds[0] = 1;
-		    winnerCoinIds[1] = 3;
-		    
-		    emit SendAwards(0x40d8bf4DA4eacBe8F08652b25503bd189174e48d, 1 ether);
-		    emit SendAwards(0xc56Dd463D318C9503f218A9041d62469A4CC9770, 2 ether);
-		    
-		} else if (1 == _id) {
-		    winnerCoinIds.length = 3;
-		    winnerCoinIds[0] = 0;
-		    winnerCoinIds[1] = 2;
-		    winnerCoinIds[2] = 4;
-		    
-		    emit SendAwards(0x6c0937b87B374Af82Af2092404C9B6Ca933c3e90, 1 ether);
-		    emit SendAwards(0x439aeD2238E9e46E69d076B2EF5Fbe2eE0C65c5b, 2 ether);
-		    
-		} else {
-		    winnerCoinIds.length = 1;
-		    winnerCoinIds[0] = 2;
-		    
-		    emit SendAwards(0xbF7c3BaC5624490823906512a80DBC53Df73175D, 2 ether);
-		}
-		    
-		emit Closed();
-	}
-	
-	function testBet() public {
-	   	emit CoinBet(1, 0x70a7b0fea692059674e483dae9ec544ddae8c17b, 1 ether);
-	}
-	
-	function largestBet() public {
-	    emit CoinLargestBet(1, 10 ether);
-	}
-	*/
-	function getCoinBetData(uint256 _id) 
+    
+    function getGameBetData(uint256 _gameId, uint256 _coinId)
 	    public 
 	    view 
 	    returns (uint256 totalBets, uint256 largestBets, uint256 numberOfBets)
 	{
-	    require(_id < 5);
-	    require(now.add(HIDDEN_TIME_BEFORE_CLOSE) <= closeTime || now > closeTime);
+	    require(_gameId < gameData.length);
+	    require(_gameId < gameHideableData.length);
+	    require(_coinId < 5);
 	    
-	    CoinBets storage c = _coinbets[_id];
-	    totalBets = c.totalBets;
-	    numberOfBets = c.bets.length;
-	    largestBets = _getLargestBets(c);
+	    GameData storage game = gameData[_gameId];
+	    GameHideableData storage hidableData = gameHideableData[_gameId];
+	    
+	    if (!(now <= game.closeTime && now.add(HIDDEN_TIME_BEFORE_CLOSE) > game.closeTime)) {
+	        CoinBets storage b = hidableData.coinbets[_coinId];
+	        totalBets = b.totalBets;
+	        numberOfBets = b.bets.length;
+	        largestBets = _getLargestBets(b);
+	    }
 	}
-	
-	function numberOfWinnerCoinIds() public view returns (uint256) {
-	    return winnerCoinIds.length;
-	}
-	
-	function isAlive() public view returns (bool) {
-		return now >= openTime && now <= closeTime;
-	}
-	
-	function bet(uint256 _id) public payable {
+    
+    function bet(uint256 _gameId, uint256 _coinId) public payable {
 	    require(msg.value >= MIN_BET);
-	    require(_id < 5);
-	    require(now >= openTime && now <= closeTime);
+	    require(_gameId < gameData.length);
+	    require(_gameId < gameHideableData.length);
+	    require(_coinId < 5);
 	    
-	    uint256 txFeeAmount = msg.value.mul(txFee).div(1000);
+	    GameData storage game = gameData[_gameId];
+	    require(now >= game.openTime && now <= game.closeTime);
+	    
+	    uint256 txFeeAmount = msg.value.mul(game.txFee).div(1000);
 	    uint256 betAmount = msg.value.sub(txFeeAmount);
 	    
 	    teamWallet.transfer(txFeeAmount);
 	    
-	    CoinBets storage c = _coinbets[_id];
+	    CoinBets storage c = gameHideableData[_gameId].coinbets[_coinId];
 	    c.totalBets += betAmount;
 	    
 	    uint256 largestBets = _getLargestBets(c);
@@ -334,36 +292,54 @@ contract MambaGame is Ownable {
 	    b.player = msg.sender;
 	    b.amount = betAmount;
 	    
-        if (betAmount > largestBets) {
+	   if (betAmount > largestBets) {
             c.largestBetIds.length = 1;
             c.largestBetIds[0] = betId;
-        	emit CoinLargestBet(_id, betAmount);
+            
+            if (!isBetInformationHidden(_gameId)) {     
+        	    emit CoinLargestBet(_gameId, _coinId, betAmount);
+            }
         } else if (betAmount == largestBets) {
             c.largestBetIds.push(betId);
         }
         
-        emit CoinBet(_id, msg.sender, betAmount);
+        if (!isBetInformationHidden(_gameId)) {
+            emit CoinBet(_gameId, _coinId, msg.sender, betAmount);
+        }
 	}
+    
+    function isBetInformationHidden(uint256 _gameId) public view returns (bool) {
+        require(_gameId < gameData.length);
+        
+	    GameData storage game = gameData[_gameId];
+	    return now <= game.closeTime && now.add(HIDDEN_TIME_BEFORE_CLOSE) > game.closeTime;
+    }
 	
-	function close(int32[5] _endExRate, uint256 _timeStampOfEndRate) 
+	function close(uint256 _gameId, int32[5] _endExRate, uint256 _timeStampOfEndRate) 
 	    onlyOwner 
 	    public 
 	    returns (bool)
 	{
+	    require(_gameId < gameData.length);
+	    require(_gameId < gameHideableData.length);
+	    
 	    require(_endExRate[0] > 0);
 		require(_endExRate[1] > 0);
 		require(_endExRate[2] > 0);
 		require(_endExRate[3] > 0);
 		require(_endExRate[4] > 0);
 		
-		require(now > closeTime);
+		GameData storage game = gameData[_gameId];
+		GameHideableData storage hidableData = gameHideableData[_gameId];
+		
+		require(now > game.closeTime);
 		
 		uint256[5] memory ranks;
 		
 		// Get largest and smallest rasing rate coins.
-	    int32 largestStart = coins[0].startExRate;
+	    int32 largestStart = game.coins[0].startExRate;
 	    int32 largestEnd = _endExRate[0];
-	    int32 start = coins[1].startExRate;
+	    int32 start = game.coins[1].startExRate;
 		int32 end = _endExRate[1];
 	    int32 smallStart;
 		int32 smallEnd;
@@ -390,7 +366,7 @@ contract MambaGame is Ownable {
 		
 		// Sorting.
 		for (uint256 i = 2; i < 5; ++i) {
-		    start = coins[i].startExRate;
+		    start = game.coins[i].startExRate;
 		    end = _endExRate[i];
 		    
 		    if (_isGreaterThan(start, end, largestStart, largestEnd)) {
@@ -404,12 +380,12 @@ contract MambaGame is Ownable {
 		        smallStart = start;
 		        smallEnd = end;
 		    } else if (_isEqualTo(start, end, largestStart, largestEnd)) {
-		        if (_getLargestBets(_coinbets[ranks[0]]) < _getLargestBets(_coinbets[i])) {
+		        if (_getLargestBets(hidableData.coinbets[ranks[0]]) < _getLargestBets(hidableData.coinbets[i])) {
 		            ranks[i] = ranks[0];
 		            ranks[0] = i;
 		        }
 		    } else if (_isEqualTo(start, end, smallStart, smallEnd)) {
-		        if (_getLargestBets(_coinbets[ranks[1]]) < _getLargestBets(_coinbets[i])) {
+		        if (_getLargestBets(hidableData.coinbets[ranks[1]]) < _getLargestBets(hidableData.coinbets[i])) {
 		            ranks[i] = ranks[1];
 		            ranks[1] = i;
 		        }
@@ -417,30 +393,30 @@ contract MambaGame is Ownable {
 		}
 		
 		// Sort the largest/smallest coins by larest bets.
-		if (_getLargestBets(_coinbets[ranks[0]]) < _getLargestBets(_coinbets[ranks[1]])) {
+		if (_getLargestBets(hidableData.coinbets[ranks[0]]) < _getLargestBets(hidableData.coinbets[ranks[1]])) {
 		    uint256 tmp = ranks[0];
 		    ranks[0] = ranks[1];
 		    ranks[1] = tmp;
 		}
 		
 		// Sort the rest of coins by totalbets.
-		if (_coinbets[ranks[2]].totalBets > _coinbets[ranks[3]].totalBets) {
-		    if (_coinbets[ranks[4]].totalBets > _coinbets[ranks[2]].totalBets) {
+		if (hidableData.coinbets[ranks[2]].totalBets > hidableData.coinbets[ranks[3]].totalBets) {
+		    if (hidableData.coinbets[ranks[4]].totalBets > hidableData.coinbets[ranks[2]].totalBets) {
 		        tmp = ranks[2];
 		        ranks[2] = ranks[4];
 		        ranks[4] = ranks[3];
 		        ranks[3] = tmp;
-		    } else if (_coinbets[ranks[4]].totalBets > _coinbets[ranks[3]].totalBets) {
+		    } else if (hidableData.coinbets[ranks[4]].totalBets > hidableData.coinbets[ranks[3]].totalBets) {
 		        tmp = ranks[3];
 		        ranks[3] = ranks[4];
 		        ranks[4] = tmp;
 		    }
-		} else if (_coinbets[ranks[2]].totalBets < _coinbets[ranks[3]].totalBets) {
-		    if (_coinbets[ranks[4]].totalBets <= _coinbets[ranks[2]].totalBets) {
+		} else if (hidableData.coinbets[ranks[2]].totalBets < hidableData.coinbets[ranks[3]].totalBets) {
+		    if (hidableData.coinbets[ranks[4]].totalBets <= hidableData.coinbets[ranks[2]].totalBets) {
 		        tmp = ranks[2];
 		        ranks[2] = ranks[3];
 		        ranks[3] = tmp;
-		    } else if (_coinbets[ranks[4]].totalBets <= _coinbets[ranks[3]].totalBets) {
+		    } else if (hidableData.coinbets[ranks[4]].totalBets <= hidableData.coinbets[ranks[3]].totalBets) {
 		        tmp = ranks[2];
 		        ranks[2] = ranks[3];
 		        ranks[3] = ranks[4];
@@ -451,7 +427,7 @@ contract MambaGame is Ownable {
 		        ranks[4] = tmp;
 		    }
 		} else {
-		    if (_coinbets[ranks[4]].totalBets > _coinbets[ranks[2]].totalBets) {
+		    if (hidableData.coinbets[ranks[4]].totalBets > hidableData.coinbets[ranks[2]].totalBets) {
 		        tmp = ranks[2];
 		        ranks[2] = ranks[4];
 		        ranks[4] = tmp;
@@ -460,107 +436,107 @@ contract MambaGame is Ownable {
 		
 		
 		// Decide the winner.
-		if (_getLargestBets(_coinbets[ranks[1]]).add(minDiffBets) < _getLargestBets(_coinbets[ranks[0]])) {
-		    isClosed = true;
-		    winnerCoinIds.push(ranks[0]);
+		if (_getLargestBets(hidableData.coinbets[ranks[1]]).add(game.minDiffBets) < _getLargestBets(hidableData.coinbets[ranks[0]])) {
+		    game.isClosed = true;
+		    game.winnerCoinIds.push(ranks[0]);
 		    
-            largestStart = coins[ranks[0]].startExRate;
+            largestStart = game.coins[ranks[0]].startExRate;
 	        largestEnd = _endExRate[ranks[0]];
 	        
 	        for (i = 2; i < 5; ++i) {
-	            start = coins[ranks[i]].startExRate;
+	            start = game.coins[ranks[i]].startExRate;
 		        end = _endExRate[ranks[i]];
 		        
 		        if (_isEqualTo(largestStart, largestEnd, start, end)) {
-		            winnerCoinIds.push(ranks[i]);
+		            game.winnerCoinIds.push(ranks[i]);
 		        }
 	        }
 		} else {
-            start = coins[ranks[2]].startExRate;
+            start = game.coins[ranks[2]].startExRate;
 		    end = _endExRate[ranks[2]];
 		        
 		    if (_isEqualTo(largestStart, largestEnd, start, end) || 
 		        _isEqualTo(smallStart, smallEnd, start, end)) {
 		        
-		        start = coins[ranks[3]].startExRate;
+		        start = game.coins[ranks[3]].startExRate;
 		        end = _endExRate[ranks[3]];
 		        
                 if (_isEqualTo(largestStart, largestEnd, start, end) || 
 		            _isEqualTo(smallStart, smallEnd, start, end)) {
 
-		            start = coins[ranks[4]].startExRate;
+		            start = game.coins[ranks[4]].startExRate;
 		            end = _endExRate[ranks[4]];
 		            
 		            if (!_isEqualTo(largestStart, largestEnd, start, end) && 
 		                !_isEqualTo(smallStart, smallEnd, start, end)) {
 		                
-		                isClosed = true;
-		                winnerCoinIds.push(ranks[4]);
+		                game.isClosed = true;
+		                game.winnerCoinIds.push(ranks[4]);
 		            }
 		        } else {
-		            start = coins[ranks[4]].startExRate;
+		            start = game.coins[ranks[4]].startExRate;
 		            end = _endExRate[ranks[4]];
 		            
 		            if (_isEqualTo(largestStart, largestEnd, start, end) ||
 		                _isEqualTo(smallStart, smallEnd, start, end)) {
 		                
-		                isClosed = true;
-		                winnerCoinIds.push(ranks[3]);
+		                game.isClosed = true;
+		                game.winnerCoinIds.push(ranks[3]);
 		            } else {
-		                if (_coinbets[ranks[4]].totalBets.add(minDiffBets) < _coinbets[ranks[3]].totalBets) {
-		                    isClosed = true;
-		                    winnerCoinIds.push(ranks[3]);
+		                if (hidableData.coinbets[ranks[4]].totalBets.add(game.minDiffBets) < hidableData.coinbets[ranks[3]].totalBets) {
+		                    game.isClosed = true;
+		                    game.winnerCoinIds.push(ranks[3]);
 	                    }
 		            }
 		        }
 		    } else {
 		        
-		        start = coins[ranks[3]].startExRate;
+		        start = game.coins[ranks[3]].startExRate;
 		        end = _endExRate[ranks[3]];
 		        
                 if (_isEqualTo(largestStart, largestEnd, start, end) || 
 		            _isEqualTo(smallStart, smallEnd, start, end)) {
 
-		            start = coins[ranks[4]].startExRate;
+		            start = game.coins[ranks[4]].startExRate;
 		            end = _endExRate[ranks[4]];
 		            
 		            if (_isEqualTo(largestStart, largestEnd, start, end) ||
 		                _isEqualTo(smallStart, smallEnd, start, end)) {
 		                
-		                isClosed = true;
-		                winnerCoinIds.push(ranks[2]);
+		                game.isClosed = true;
+		                game.winnerCoinIds.push(ranks[2]);
 		            } else {
-		                if (_coinbets[ranks[4]].totalBets.add(minDiffBets) < _coinbets[ranks[2]].totalBets) {
-		                    isClosed = true;
-		                    winnerCoinIds.push(ranks[2]);
+		                if (hidableData.coinbets[ranks[4]].totalBets.add(game.minDiffBets) < hidableData.coinbets[ranks[2]].totalBets) {
+		                    game.isClosed = true;
+		                    game.winnerCoinIds.push(ranks[2]);
 	                    }
 		            }
 		        } else {
-		            if (_coinbets[ranks[3]].totalBets.add(minDiffBets) < _coinbets[ranks[2]].totalBets) {
-		                isClosed = true;
-		                winnerCoinIds.push(ranks[2]);
+		            if (hidableData.coinbets[ranks[3]].totalBets.add(game.minDiffBets) < hidableData.coinbets[ranks[2]].totalBets) {
+		                game.isClosed = true;
+		                game.winnerCoinIds.push(ranks[2]);
 	                }
 		        }
 		    }
 		}
 		
-		if (isClosed) {
-		    timeStampOfEndRate = _timeStampOfEndRate;
-		    coins[0].endExRate = _endExRate[0];
-		    coins[1].endExRate = _endExRate[1];
-		    coins[2].endExRate = _endExRate[2];
-		    coins[3].endExRate = _endExRate[3];
-		    coins[4].endExRate = _endExRate[4];
+		if (game.isClosed) {
+		    game.timeStampOfEndRate = _timeStampOfEndRate;
+		    game.coins[0].endExRate = _endExRate[0];
+		    game.coins[1].endExRate = _endExRate[1];
+		    game.coins[2].endExRate = _endExRate[2];
+		    game.coins[3].endExRate = _endExRate[3];
+		    game.coins[4].endExRate = _endExRate[4];
 		    
-		    _distributeAwards();
+		    _distributeAwards(game, hidableData);
 		    
-		    emit Closed();
+		    emit Closed(_gameId);
 		} else {
-		    closeTime = closeTime.add(gameDuration);
-		    emit Extended();
+		    game.closeTime = game.closeTime.add(game.gameDuration);
+		    emit Extended(_gameId);
 		}
 		
-		return isClosed;
+		return game.isClosed;
 		
 	}
 	
@@ -588,31 +564,31 @@ contract MambaGame is Ownable {
 	    return ((end0 - start0) * start1) < ((end1 - start1) * start0);
 	}
 	
-	function _distributeAwards() private {
-	    Y = _randY();
+	function _distributeAwards(GameData storage _game, GameHideableData storage _gameHidableData) private {
+	    _game.Y = _randY(_game);
 	    
 	    uint256 totalAward = address(this).balance;
-	    uint256 totalAwardPerCoin = totalAward.div(winnerCoinIds.length);
+	    uint256 totalAwardPerCoin = totalAward.div(_game.winnerCoinIds.length);
 	    uint256 restWei = 0;
 	    
-	    for (uint256 i = 0; i < winnerCoinIds.length; ++i) {
-	        restWei += _distributeOneCoin(_coinbets[winnerCoinIds[i]], totalAwardPerCoin);
+	    for (uint256 i = 0; i < _game.winnerCoinIds.length; ++i) {
+	        restWei += _distributeOneCoin(_game, _gameHidableData.coinbets[_game.winnerCoinIds[i]], totalAwardPerCoin);
 	    }
 	    
 	    if (0 < restWei) {
 	        teamWallet.transfer(restWei);
-		    emit SendRemainAwards(teamWallet, restWei);
+		    emit SendRemainAwards(_game.id, teamWallet, restWei);
 	    }
 	}
 	
-	function _distributeOneCoin(CoinBets storage _cbets, uint256 totalAwards) 
+	function _distributeOneCoin(GameData storage _game, CoinBets storage _cbets, uint256 totalAwards) 
 	    private 
 	    returns (uint256)
 	{
 	    uint256 awards;
-	    uint256 weightedY = uint256(Y).mul(_cbets.bets.length);
-	    uint256 totalAwardsA = totalAwards.mul(A).div(100);
-	    uint256 totalAwardsB = totalAwards.mul(B).div(100);
+	    uint256 weightedY = uint256(_game.Y).mul(_cbets.bets.length);
+	    uint256 totalAwardsA = totalAwards.mul(_game.A).div(100);
+	    uint256 totalAwardsB = totalAwards.mul(_game.B).div(100);
 	    uint256 betsA = 0;
 	    uint256 betsB;
 	    uint256 i;
@@ -636,7 +612,7 @@ contract MambaGame is Ownable {
 	        if (0 < awards) {
 	            _cbets.bets[i].player.transfer(awards);
 	            totalAwards = totalAwards.sub(awards);
-			    emit SendAwards(_cbets.bets[i].player, awards);
+			    emit SendAwards(_game.id, _cbets.bets[i].player, awards);
 	        }
 	    }
 		
@@ -646,15 +622,15 @@ contract MambaGame is Ownable {
 	        for (i = 0; i < _cbets.largestBetIds.length; ++i) {
 	            _cbets.bets[_cbets.largestBetIds[i]].player.transfer(totalAwardsA);
 	            totalAwards = totalAwards.sub(totalAwardsA);
-			    emit SendAwards(_cbets.bets[_cbets.largestBetIds[i]].player, totalAwardsA);
+			    emit SendAwards(_game.id, _cbets.bets[_cbets.largestBetIds[i]].player, totalAwardsA);
 	        }
 	    }
 	    
 	    return totalAwards;
 	}
 	
-	function _randY() private view returns (uint8) {
-	    return uint8(YDistribution[now % YDistribution.length]);
+	function _randY(GameData storage _game) private view returns (uint8) {
+	    return uint8(_game.YDistribution[now % _game.YDistribution.length]);
 	}
 	
 	function _getLargestBets(CoinBets storage _cbets) private view returns (uint256) {

@@ -74,12 +74,12 @@ window.addEventListener('load', function () {
 				
 				game.subscribe('Extended', function (closeTime) {
 					document.getElementById("game-event").innerHTML += '"Extended" ' + new Date() + '</br>';
-					document.getElementById("game-time-end-exrate").innerHTML = closeTime;
+					document.getElementById("game-close-time").innerHTML = closeTime;
 				});
 				
 				game.subscribe('Closed', function () {
 					document.getElementById("game-event").innerHTML += '"Closed" ' + new Date() + '</br>';
-					document.getElementById("game-close-time").innerHTML = game.timeStampOfEndRate;
+					document.getElementById("game-time-end-exrate").innerHTML = game.timeStampOfEndRate;;
 					for(let i = 0; i < game.coins.length; ++i) {
 						document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 					}
@@ -106,19 +106,19 @@ window.addEventListener('load', function () {
 				});
 				
 				document.getElementById("bet-form-submit-btn").disabled = false;
-				document.getElementById("bet-form").addEventListener('submit', function (event) {
-					event.preventDefault();
-					let coinId = document.getElementById("coin-id-selector").value;
-					let bets = document.getElementById("bet-amount").value;
-					game.bet(coinId, bets).then(function () {
-						console.log("Bets on " + coinId + ".");
-					}).catch(console.error);
-				});
 			});
 		});
 		
-		
-		
+		document.getElementById("bet-form").addEventListener('submit', function (event) {
+			event.preventDefault();
+			let coinId = document.getElementById("coin-id-selector").value;
+			let bets = document.getElementById("bet-amount").value;
+			if (game) {
+				game.bet(coinId, bets).then(function () {
+					console.log("Bets on " + coinId + ".");
+				}).catch(console.error);
+			}
+		});
 	}).catch(console.error);
 	
 });
