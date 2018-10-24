@@ -204,18 +204,14 @@ contract('MambaGameTest', function(accounts) {
 		let gameId = numberOfGameData - 1;
 		
 		// Bets.
-		let bets = [];
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[8]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]}));
-		bets.push(game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]}));
-		bets.push(game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]}));
-		bets.push(game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]}));
-		
-		await Promise.all(bets);
+		await game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]});
+		await game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[8]});
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
 		
 		// Get balance at beginning.
-		
 		let balanceBegin0 = await getBalance(accounts[7]);
 		let balanceBegin1 = await getBalance(accounts[8]);
 		let balanceBegin2 = await getBalance(accounts[9]);
@@ -302,18 +298,14 @@ contract('MambaGameTest', function(accounts) {
 		let gameId = numberOfGameData - 1;
 		
 		// Bets.
-		let bets = [];
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[8]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]}));
-		bets.push(game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]}));
-		bets.push(game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]}));
-		bets.push(game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]}));
-		
-		await Promise.all(bets);
+		await game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]});
+		await game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[8]});
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
 		
 		// Get balance at beginning.
-		
 		let balanceBegin0 = await getBalance(accounts[7]);
 		let balanceBegin1 = await getBalance(accounts[8]);
 		let balanceBegin2 = await getBalance(accounts[9]);
@@ -403,19 +395,15 @@ contract('MambaGameTest', function(accounts) {
 		let gameId = numberOfGameData - 1;
 		
 		// Bets.
-		let bets = [];
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(20, "finney"), from: accounts[8]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]}));
-		bets.push(game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]}));
-		bets.push(game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]}));
-		bets.push(game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]}));
-		bets.push(game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]}));
-		
-		await Promise.all(bets);
+		await game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]});
+		await game.bet(gameId, 0, {value: web3.toWei(20, "finney"), from: accounts[8]});
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+		await game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]});
 		
 		// Get balance at beginning.
-		
 		let balanceBegin0 = await getBalance(accounts[7]);
 		let balanceBegin1 = await getBalance(accounts[8]);
 		let balanceBegin2 = await getBalance(accounts[9]);
@@ -501,19 +489,15 @@ contract('MambaGameTest', function(accounts) {
 		let gameId = numberOfGameData - 1;
 		
 		// Bets.
-		let bets = [];
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(20, "finney"), from: accounts[8]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]}));
-		bets.push(game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]}));
-		bets.push(game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]}));
-		bets.push(game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]}));
-		bets.push(game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]}));
-		
-		await Promise.all(bets);
+		await game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]});
+		await game.bet(gameId, 0, {value: web3.toWei(20, "finney"), from: accounts[8]});
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+		await game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]});
 		
 		// Get balance at beginning.
-		
 		let balanceBegin0 = await getBalance(accounts[7]);
 		let balanceBegin1 = await getBalance(accounts[8]);
 		let balanceBegin2 = await getBalance(accounts[9]);
@@ -599,19 +583,15 @@ contract('MambaGameTest', function(accounts) {
 		let gameId = numberOfGameData - 1;
 		
 		// Bets.
-		let bets = [];
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(20, "finney"), from: accounts[8]}));
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]}));
-		bets.push(game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]}));
-		bets.push(game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]}));
-		bets.push(game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]}));
-		bets.push(game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]}));
-		
-		await Promise.all(bets);
+		await game.bet(gameId, 0, {value: web3.toWei(30, "finney"), from: accounts[7]});
+		await game.bet(gameId, 0, {value: web3.toWei(20, "finney"), from: accounts[8]});
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[9]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+		await game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]});
 		
 		// Get balance at beginning.
-		
 		let balanceBegin0 = await getBalance(accounts[7]);
 		let balanceBegin1 = await getBalance(accounts[8]);
 		let balanceBegin2 = await getBalance(accounts[9]);
@@ -706,14 +686,11 @@ contract('MambaGameTest', function(accounts) {
 		let gameId = numberOfGameData - 1;
 		
 		// Bets.
-		let bets = [];
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[7]}));
-		bets.push(game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]}));
-		bets.push(game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]}));
-		bets.push(game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]}));
-		bets.push(game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]}));
-		
-		await Promise.all(bets);
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[7]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+		await game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]});
 	
 		// Close the game.
 		let endExRate = [100 // 0%
@@ -769,14 +746,11 @@ contract('MambaGameTest', function(accounts) {
 		let gameId = numberOfGameData - 1;
 		
 		// Bets.
-		let bets = [];
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[7]}));
-		bets.push(game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]}));
-		bets.push(game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]}));
-		bets.push(game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]}));
-		bets.push(game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]}));
-		
-		await Promise.all(bets);
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[7]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+		await game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]});
 	
 		// Close the game.
 		let endExRate = [120 // 20%
@@ -832,14 +806,11 @@ contract('MambaGameTest', function(accounts) {
 		let gameId = numberOfGameData - 1;
 		
 		// Bets.
-		let bets = [];
-		bets.push(game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[7]}));
-		bets.push(game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]}));
-		bets.push(game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]}));
-		bets.push(game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]}));
-		bets.push(game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]}));
-		
-		await Promise.all(bets);
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[7]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+		await game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]});
 		
 		// Get balance at beginning.
 		let balanceBegin0 = await getBalance(accounts[7]);
