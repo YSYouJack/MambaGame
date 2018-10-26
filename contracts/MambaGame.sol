@@ -2,8 +2,9 @@ pragma solidity ^0.4.24;
 
 import "../third-contracts/openzeppelin-solidity/contracts/ownership/Ownable.sol";
 import "../third-contracts/openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "../third-contracts/oraclize/ethereum-api/oraclizeAPI_0.5.sol";
 
-contract MambaGame is Ownable {
+contract MambaGame is Ownable, usingOraclize {
 	using SafeMath for uint256;
 
 	struct Bet {
@@ -42,6 +43,9 @@ contract MambaGame is Ownable {
 	    bool isClosed;
 	    uint256[] winnerCoinIds;
 	    
+	    mapping (bytes32 => uint256) startExRateQueryIds;
+	    mapping (bytes32 => uint256) endExRateQueryIds;
+	    
 	    Coin[5] coins;
 	}
 	
@@ -57,6 +61,10 @@ contract MambaGame is Ownable {
 	uint256 public MIN_BET = 10 finney; // 0.01 ether.
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
 	
+	mapping (bytes32 => uint256) startExRateQueryIds;
+	mapping (bytes32 => uint256) endExRateQueryIds;
+	mapping (bytes32 => uint256) randYQueryIds;
+	
 	event Closed(uint256 indexed gameId);
 	event Extended(uint256 indexed gameId);
 	event CoinBet(uint256 indexed gameId, uint256 indexed coinId, address player, uint256 bets);
@@ -64,11 +72,16 @@ contract MambaGame is Ownable {
 	event SendAwards(uint256 indexed gameId, address player, uint256 awards);
 	event SendRemainAwards(uint256 indexed gameId, address teamWallet, uint256 awards);
 	event GameCreated(uint256 gameId, uint256 openTime);
+	event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate);
+	event EndExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate);
+	event YChoosed(uint256 indexed gameId, uint8 Y);
 	
 	constructor(address _teamWallet) public
 	{
 	    require(_teamWallet != address(0));
 		teamWallet = _teamWallet;
+		
+		OAR = OraclizeAddrResolverI(0xA8473897374abf3f316a38AFb90498b2F58aE49E);
 	}
 	
 	function createNewGame(uint256 _openTime
@@ -78,8 +91,6 @@ contract MambaGame is Ownable {
 		, string _coinName2
 		, string _coinName3
 		, string _coinName4
-		, int32[5] _startExRate
-		, uint256 _exRateTimeStamp
 		, uint8[50] _YDistribution
 		, uint8 _A
 		, uint8 _B
@@ -140,12 +151,6 @@ contract MambaGame is Ownable {
 		require(_YDistribution[48] <= 100);
 		require(_YDistribution[49] <= 100);
 		
-		require(_startExRate[0] > 0);
-		require(_startExRate[1] > 0);
-		require(_startExRate[2] > 0);
-		require(_startExRate[3] > 0);
-		require(_startExRate[4] > 0);
-		
 		require(_openTime >= now);
 		require(_gameDuration > 0);
 		
@@ -164,22 +169,12 @@ contract MambaGame is Ownable {
 		game.openTime = _openTime;
 		game.closeTime = _openTime + _gameDuration;
 		game.gameDuration = _gameDuration;
-		game.timeStampOfStartRate = _exRateTimeStamp;
 		
 		game.coins[0].name = _coinName0;
-		game.coins[0].startExRate = _startExRate[0];
-		
 		game.coins[1].name = _coinName1;
-		game.coins[1].startExRate = _startExRate[1];
-		
 		game.coins[2].name = _coinName2;
-		game.coins[2].startExRate = _startExRate[2];
-		
 		game.coins[3].name = _coinName3;
-		game.coins[3].startExRate = _startExRate[3];
-		
 		game.coins[4].name = _coinName4;
-		game.coins[4].startExRate = _startExRate[4];
 		
 		game.YDistribution = _YDistribution;
 		game.A = _A;
@@ -187,6 +182,33 @@ contract MambaGame is Ownable {
 		game.txFee = _txFee;
 		game.minDiffBets = _minDiffBets;
 		game.isClosed = false;
+		
+		string memory url;
+		bytes32 queryId;
+		url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[0].name, "USDT).price");
+		queryId = oraclize_query(60, "URL", url);
+		startExRateQueryIds[queryId] = gameData.length;
+		game.startExRateQueryIds[queryId] = 1;
+		
+		url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[1].name, "USDT).price");
+		queryId = oraclize_query(60, "URL", url);
+		startExRateQueryIds[queryId] = gameData.length;
+		game.startExRateQueryIds[queryId] = 2;
+		
+		url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[2].name, "USDT).price");
+		queryId = oraclize_query(60, "URL", url);
+		startExRateQueryIds[queryId] = gameData.length;
+		game.startExRateQueryIds[queryId] = 3;
+		
+		url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[3].name, "USDT).price");
+		queryId = oraclize_query(60, "URL", url);
+		startExRateQueryIds[queryId] = gameData.length;
+		game.startExRateQueryIds[queryId] = 4;
+		
+		url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[4].name, "USDT).price");
+		queryId = oraclize_query(60, "URL", url);
+		startExRateQueryIds[queryId] = gameData.length;
+		game.startExRateQueryIds[queryId] = 5;
 		
 		emit GameCreated(gameData.length - 1, game.openTime);
 	}
@@ -315,6 +337,7 @@ contract MambaGame is Ownable {
 	    return now <= game.closeTime && now.add(HIDDEN_TIME_BEFORE_CLOSE) > game.closeTime;
     }
 	
+	/*
 	function close(uint256 _gameId, int32[5] _endExRate, uint256 _timeStampOfEndRate) 
 	    onlyOwner 
 	    public 
@@ -632,8 +655,49 @@ contract MambaGame is Ownable {
 	function _randY(GameData storage _game) private view returns (uint8) {
 	    return uint8(_game.YDistribution[now % _game.YDistribution.length]);
 	}
-	
+	*/
 	function _getLargestBets(CoinBets storage _cbets) private view returns (uint256) {
 	    return (_cbets.largestBetIds.length > 0) ? _cbets.bets[_cbets.largestBetIds[0]].amount : 0;
 	}
+	
+	// Callback for oraclize query.
+	function __callback(bytes32 _id, string _result) public {
+	    assert(msg.sender == oraclize_cbAddress());
+	    uint256 gameId;
+	    uint256 coinId; 
+	    if (0 != startExRateQueryIds[_id]) {
+	        gameId = startExRateQueryIds[_id] - 1;
+	        GameData storage data = gameData[gameId];
+            
+	        coinId = data.startExRateQueryIds[_id] - 1;
+	        data.coins[coinId].startExRate = int32(parseInt(_result));
+	        
+	        delete startExRateQueryIds[_id];
+	        delete data.startExRateQueryIds[_id];
+	        
+	        emit StartExRateUpdated(gameId, coinId, data.coins[coinId].startExRate);
+	    } else if (0 != endExRateQueryIds[_id]) {
+	        gameId = endExRateQueryIds[_id] - 1;
+	        data = gameData[gameId];
+            
+	        coinId = data.endExRateQueryIds[_id] - 1;
+	        data.coins[coinId].endExRate = int32(parseInt(_result));
+	        
+	        delete endExRateQueryIds[_id];
+	        delete data.endExRateQueryIds[_id];
+	        
+	        emit EndExRateUpdated(gameId, coinId, data.coins[coinId].endExRate);
+	    } else if (0 != randYQueryIds[_id]) {
+	        
+	        gameId = randYQueryIds[_id] - 1;
+	        data = gameData[gameId];
+	        
+	        data.Y = data.YDistribution[parseInt(_result)];
+	        
+	        delete randYQueryIds[_id];
+	        emit YChoosed(gameId, data.Y);
+	    } else {
+	        revert();
+	    }
+   }
 }
