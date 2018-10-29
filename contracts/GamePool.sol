@@ -22,10 +22,11 @@ contract GamePool is Ownable, usingOraclize {
     GameLogic.GameBets[] gameBets;
     
     address public txFeeReceiver;
-    uint256 public oricalizeTxFee;
+    uint256 public oraclizeFee;
     
     uint256 public MIN_BET = 10 finney; // 0.01 ether.
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
+	uint256 public ORICALIZE_GAS_LIMIT = 200000;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate);
     event EndExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate);
@@ -41,8 +42,6 @@ contract GamePool is Ownable, usingOraclize {
     constructor(address _txFeeReceiver) public {
         require(address(0) != _txFeeReceiver);
         txFeeReceiver = _txFeeReceiver;
-        
-        OAR = OraclizeAddrResolverI(0xA8473897374abf3f316a38AFb90498b2F58aE49E);
     }
     
     function createNewGame(uint256 _openTime
@@ -235,42 +234,65 @@ contract GamePool is Ownable, usingOraclize {
 	    GameLogic.bet(game, bets, _coinId, txFeeReceiver);
 	}
 	
-	function fetchStartRate(uint256 _gameId) public onlyOwner payable {
-	    require(oricalizeTxFee > 20 finney);
+	function fetchStartRate(uint256 _gameId) public onlyOwner {
+	    // Check the game id.
         require(_gameId < games.length);
         
+        // Check the game state.
         GameLogic.Instance storage game = games[_gameId];
         require(GameLogic.state(game) == GameLogic.State.Created);
+        
+        // Check the tx fee amount.
+       require(address(this).balance >= oraclizeFee);
         
         // Query all start exchange rate.
 		string memory url;
 		bytes32 queryId;
+		uint256 fee = 0;
 		
 		for (uint256 i = 0; i < 5; ++i) {
+		    fee = oraclize_getPrice("URL", ORICALIZE_GAS_LIMIT);
+		    require(fee <= oraclizeFee);
+		    oraclizeFee = oraclizeFee.sub(fee);
+		    
 		    url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[i].name, "USDT).price");
-		    queryId = oraclize_query(60, "URL", url);
+		    queryId = oraclize_query("URL", url, ORICALIZE_GAS_LIMIT);
 		    queryRecords[queryId] = QueryRecord(RecordType.StartExRate, game.id, i);
 		}
     }	
     
     function fetchExRate(uint256 _gameId) public onlyOwner payable {
-        require(oricalizeTxFee > 20 finney);
+        // Check the game id.
         require(_gameId < games.length);
         
+        // Check the game state.
         GameLogic.Instance storage game = games[_gameId];
         require(GameLogic.state(game) == GameLogic.State.Stop);
         
-        // Query all start exchange rate.
+        // Check the tx fee amount.
+        require(address(this).balance >= oraclizeFee);
+        
+        // Query all end exchange rate.
 		string memory url;
 		bytes32 queryId;
+		uint256 fee = 0;
 		
 		for (uint256 i = 0; i < 5; ++i) {
+		    fee = oraclize_getPrice("URL", ORICALIZE_GAS_LIMIT);
+		    require(fee <= oraclizeFee);
+		    oraclizeFee = oraclizeFee.sub(fee);
+		    
 		    url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[i].name, "USDT).price");
-		    queryId = oraclize_query(60, "URL", url);
+		    queryId = oraclize_query("URL", url);
 		    queryRecords[queryId] = QueryRecord(RecordType.EndExRate, game.id, i);
 		}
 		
-		queryId = oraclize_query(60, "URL", "https://www.random.org/integers/?num=1&min=0&max=49&col=1&base=10&format=plain&rnd=new");
+		// Query rand y.
+		fee = oraclize_getPrice("URL", ORICALIZE_GAS_LIMIT);
+		require(fee <= oraclizeFee);
+		oraclizeFee = oraclizeFee.sub(fee);
+		
+		queryId = oraclize_query("URL", "https://www.random.org/integers/?num=1&min=0&max=49&col=1&base=10&format=plain&rnd=new");
 		queryRecords[queryId] = QueryRecord(RecordType.RandY, game.id, 0);
     }
     
@@ -304,6 +326,16 @@ contract GamePool is Ownable, usingOraclize {
 		}
 	}
 	
+	function calculateAwardAmount(uint256 _gameId) public view returns (uint256) {
+	    require(_gameId < games.length);
+	    require(_gameId < gameBets.length);
+	    
+	    GameLogic.Instance storage game = games[_gameId];
+		GameLogic.GameBets storage bets = gameBets[_gameId];
+		
+		return GameLogic.calculateAwardAmount(game, bets);
+	}
+	
 	function getAwards(uint256 _gameId) public {
 	    require(_gameId < games.length);
 	    require(_gameId < gameBets.length);
@@ -323,26 +355,19 @@ contract GamePool is Ownable, usingOraclize {
 		}
 	}
     
-    function withdrawRestAwards(uint256 _gameId) public onlyOwner {
-        require(_gameId < games.length);
-	    require(_gameId < gameBets.length);
-	    
-	    GameLogic.Instance storage game = games[_gameId];
-	    require(GameLogic.state(game) == GameLogic.State.Closed);
-	    require(game.closeTime + 90 days < now);
-	    
-	    GameLogic.GameBets storage bets = gameBets[_gameId];
-	    uint256 amount = bets.awardAmount.sub(bets.transferedAwardAmount);
-	    if (amount > 0) {
-	        require(address(this).balance >= amount);
-	        
-	        bets.transferedAwardAmount = bets.awardAmount;
-	        owner().transfer(amount);
-	    }
+    function withdraworaclizeFee() public onlyOwner {
+        require(address(this).balance >= oraclizeFee);
+        uint256 amount = oraclizeFee;
+        oraclizeFee = 0;
+        owner().transfer(amount);
+    }
+    
+    function sendOraclizeFee() public payable {
+        oraclizeFee = oraclizeFee.add(msg.value);
     }
     
     function () public payable {
-        oricalizeTxFee = oricalizeTxFee.add(msg.value);
+        sendOraclizeFee();
     }
     
     // Callback for oraclize query.
@@ -359,21 +384,16 @@ contract GamePool is Ownable, usingOraclize {
 	        emit GameYChoosed(gameId, game.Y);
 	    } else {
 	        uint256 coinId = queryRecords[_id].arg;
-	        delete queryRecords[_id];
 	        
 	        if (RecordType.StartExRate == queryRecords[_id].recordType) {
 	            game.coins[coinId].startExRate = int32(parseInt(_result, 2));
-	            if (0 == game.timeStampOfStartRate) {
-	                game.timeStampOfStartRate = now;
-	            }
-	            
+	            game.timeStampOfStartRate = now;
+	            delete queryRecords[_id];
 	            emit StartExRateUpdated(gameId, coinId, game.coins[coinId].startExRate);
 	        } else if (RecordType.EndExRate == queryRecords[_id].recordType) {
 	            game.coins[coinId].endExRate = int32(parseInt(_result, 2));
-	            if (0 == game.timeStampOfEndRate) {
-	                game.timeStampOfEndRate = now;
-	            }
-	            
+	            game.timeStampOfEndRate = now;
+	            delete queryRecords[_id];
 	            emit EndExRateUpdated(gameId, coinId, game.coins[coinId].endExRate);
 	        } else {
 	            revert();

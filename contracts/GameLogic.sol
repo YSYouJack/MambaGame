@@ -5,7 +5,7 @@ import "../third-contracts/openzeppelin-solidity/contracts/math/SafeMath.sol";
 library GameLogic {
     using SafeMath for uint256;
     
-    enum State { Created, Ready, Open, Stop, WaitToClose, Closed }
+    enum State { Created, Ready, Open, Stop, WaitToClose, Closed, Error }
     
     struct Bets {
         uint256 betAmount;
@@ -70,7 +70,14 @@ library GameLogic {
 	    if (game.isFinished) {
 	        return State.Closed;
 	    } else if (now > game.closeTime) {
-	        if (0 != game.coins[0].endExRate && 
+	        if (0 == game.coins[0].startExRate || 
+	            0 == game.coins[1].startExRate ||
+	            0 == game.coins[2].startExRate ||
+	            0 == game.coins[3].startExRate ||
+	            0 == game.coins[4].startExRate)
+	        {
+	            return State.Error;
+	        } else if (0 != game.coins[0].endExRate && 
 	            0 != game.coins[1].endExRate &&
 	            0 != game.coins[2].endExRate &&
 	            0 != game.coins[3].endExRate &&
@@ -103,7 +110,7 @@ library GameLogic {
 	    public 
 	    returns (bool) 
 	{
-		require(now > game.closeTime);
+		require(state(game) == State.WaitToClose);
 		
 		uint256[5] memory ranks;
 		
@@ -295,6 +302,13 @@ library GameLogic {
 		}
 		
 		return game.isFinished;
+	}
+	
+	function forceClose(Instance storage game, GameBets storage gameBets)
+	    public 
+	{
+        require(state(game) == State.Error && 0 == gameBets.awardAmount);
+        game.isFinished = true;
 	}
 	
 	function bet(Instance storage game, GameBets storage gameBets, uint256 coinId, address txFeeReceiver)
