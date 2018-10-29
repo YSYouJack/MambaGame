@@ -2,14 +2,16 @@ pragma solidity ^0.4.24;
 
 import "../third-contracts/openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-library GameLogicLib {
+library GameLogic {
+    using SafeMath for uint256;
+    
     enum State { Created, Ready, Open, Stop, WaitToClose, Closed }
     
-    struct Bet {
-		address player;
-		uint256 amount;
-	}
-	
+    struct Bets {
+        uint256 betAmount;
+        uint256 totalBetAmountByFar;
+    }
+    
 	struct Coin {
 		string name;
 		int32  startExRate;
@@ -17,9 +19,17 @@ library GameLogicLib {
 	}
 	
 	struct CoinBets {
-	    uint256[] largestBetIds;
-		uint256 totalBets;
-	    Bet[] bets;
+	    uint256 largestBetAmount;
+	    uint256 numberOfLargestBetTx;
+	    uint256 totalBetAmount;
+		Bets[] bets;
+	    mapping (address => uint256[]) playerBetMap;
+	    uint256 yThreshold;
+	    uint256 awardAmountBeforeY;
+	    uint256 awardAmountAfterY;
+	    uint256 awardAmountForLargestBetPlayers;
+	    uint256 totalBetAmountBeforeY;
+	    uint256 totalBetAmountAfterY;
 	}
 	
 	struct Instance {
@@ -28,26 +38,33 @@ library GameLogicLib {
 	    uint256 openTime;
 	    uint256 closeTime;
 	    uint256 duration;
+	    uint256 hiddenTimeBeforeClose;
 	    
 	    uint8[50] YDistribution;
 	    uint8 Y;
 	    uint8 A;
 	    uint8 B;
 	    uint16 txFee;
+	    bool isFinished;
+	    bool isYChoosed;
 	    uint256 minDiffBets;
 	    uint256 timeStampOfStartRate;
 	    uint256 timeStampOfEndRate;
 	    
-	    bool isFinished;
-	    bool isYChoosed;
 	    uint256[] winnerCoinIds;
 	    
 	    Coin[5] coins;
 	}
 	
-	struct Bets {
-	    Game.CoinBets[5] coinbets;
+	struct GameBets {
+	    CoinBets[5] coinbets;
+	    uint256 awardAmount;
+	    uint256 transferedAwardAmount;
+	    mapping (address => bool) isAwardTransfered;
 	}
+	
+	event CoinBet(uint256 indexed gameId, uint256 coinId, address player, uint256 amount);
+	event CoinLargestBetChanged(uint256 indexed gameId, uint256 coinId, uint256 amount);
 	
 	function state(Instance storage game) public view returns (State) {
 	    if (game.isFinished) {
@@ -82,7 +99,7 @@ library GameLogicLib {
 	    }
 	}
 	
-	function tryClose(Instance storage game, Bets storage bets)
+	function tryClose(Instance storage game, GameBets storage bets)
 	    public 
 	    returns (bool) 
 	{
@@ -134,12 +151,12 @@ library GameLogicLib {
 		        smallStart = start;
 		        smallEnd = end;
 		    } else if (isEqualTo(start, end, largestStart, largestEnd)) {
-		        if (getLargestBets(bets.coinbets[ranks[0]]) < getLargestBets(bets.coinbets[i])) {
+		        if (bets.coinbets[ranks[0]].largestBetAmount < bets.coinbets[i].largestBetAmount) {
 		            ranks[i] = ranks[0];
 		            ranks[0] = i;
 		        }
 		    } else if (isEqualTo(start, end, smallStart, smallEnd)) {
-		        if (getLargestBets(bets.coinbets[ranks[1]]) < getLargestBets(bets.coinbets[i])) {
+		        if (bets.coinbets[ranks[1]].largestBetAmount < bets.coinbets[i].largestBetAmount) {
 		            ranks[i] = ranks[1];
 		            ranks[1] = i;
 		        }
@@ -147,30 +164,30 @@ library GameLogicLib {
 		}
 		
 		// Sort the largest/smallest coins by larest bets.
-		if (getLargestBets(bets.coinbets[ranks[0]]) < getLargestBets(bets.coinbets[ranks[1]])) {
+		if (bets.coinbets[ranks[0]].largestBetAmount < bets.coinbets[ranks[1]].largestBetAmount) {
 		    uint256 tmp = ranks[0];
 		    ranks[0] = ranks[1];
 		    ranks[1] = tmp;
 		}
 		
 		// Sort the rest of coins by totalbets.
-		if (bets.coinbets[ranks[2]].totalBets > bets.coinbets[ranks[3]].totalBets) {
-		    if (bets.coinbets[ranks[4]].totalBets > bets.coinbets[ranks[2]].totalBets) {
+		if (bets.coinbets[ranks[2]].totalBetAmount > bets.coinbets[ranks[3]].totalBetAmount) {
+		    if (bets.coinbets[ranks[4]].totalBetAmount > bets.coinbets[ranks[2]].totalBetAmount) {
 		        tmp = ranks[2];
 		        ranks[2] = ranks[4];
 		        ranks[4] = ranks[3];
 		        ranks[3] = tmp;
-		    } else if (bets.coinbets[ranks[4]].totalBets > bets.coinbets[ranks[3]].totalBets) {
+		    } else if (bets.coinbets[ranks[4]].totalBetAmount > bets.coinbets[ranks[3]].totalBetAmount) {
 		        tmp = ranks[3];
 		        ranks[3] = ranks[4];
 		        ranks[4] = tmp;
 		    }
-		} else if (bets.coinbets[ranks[2]].totalBets < bets.coinbets[ranks[3]].totalBets) {
-		    if (bets.coinbets[ranks[4]].totalBets <= bets.coinbets[ranks[2]].totalBets) {
+		} else if (bets.coinbets[ranks[2]].totalBetAmount < bets.coinbets[ranks[3]].totalBetAmount) {
+		    if (bets.coinbets[ranks[4]].totalBetAmount <= bets.coinbets[ranks[2]].totalBetAmount) {
 		        tmp = ranks[2];
 		        ranks[2] = ranks[3];
 		        ranks[3] = tmp;
-		    } else if (bets.coinbets[ranks[4]].totalBets <= bets.coinbets[ranks[3]].totalBets) {
+		    } else if (bets.coinbets[ranks[4]].totalBetAmount <= bets.coinbets[ranks[3]].totalBetAmount) {
 		        tmp = ranks[2];
 		        ranks[2] = ranks[3];
 		        ranks[3] = ranks[4];
@@ -181,16 +198,15 @@ library GameLogicLib {
 		        ranks[4] = tmp;
 		    }
 		} else {
-		    if (bets.coinbets[ranks[4]].totalBets > bets.coinbets[ranks[2]].totalBets) {
+		    if (bets.coinbets[ranks[4]].totalBetAmount > bets.coinbets[ranks[2]].totalBetAmount) {
 		        tmp = ranks[2];
 		        ranks[2] = ranks[4];
 		        ranks[4] = tmp;
 		    }
 		}
 		
-		
 		// Decide the winner.
-		if (SafeMath.add(getLargestBets(bets.coinbets[ranks[1]]), game.minDiffBets) < getLargestBets(bets.coinbets[ranks[0]])) {
+		if (bets.coinbets[ranks[1]].largestBetAmount.add(game.minDiffBets) < bets.coinbets[ranks[0]].largestBetAmount) {
 		    game.isFinished = true;
 		    game.winnerCoinIds.push(ranks[0]);
 		    
@@ -237,7 +253,7 @@ library GameLogicLib {
 		                game.isFinished = true;
 		                game.winnerCoinIds.push(ranks[3]);
 		            } else {
-		                if (SafeMath.add(bets.coinbets[ranks[4]].totalBets, game.minDiffBets) < bets.coinbets[ranks[3]].totalBets) {
+		                if (bets.coinbets[ranks[4]].totalBetAmount.add(game.minDiffBets) < bets.coinbets[ranks[3]].totalBetAmount) {
 		                    game.isFinished = true;
 		                    game.winnerCoinIds.push(ranks[3]);
 	                    }
@@ -260,13 +276,13 @@ library GameLogicLib {
 		                game.isFinished = true;
 		                game.winnerCoinIds.push(ranks[2]);
 		            } else {
-		                if (SafeMath.add(bets.coinbets[ranks[4]].totalBets, game.minDiffBets) < bets.coinbets[ranks[2]].totalBets) {
+		                if (bets.coinbets[ranks[4]].totalBetAmount.add(game.minDiffBets) < bets.coinbets[ranks[2]].totalBetAmount) {
 		                    game.isFinished = true;
 		                    game.winnerCoinIds.push(ranks[2]);
 	                    }
 		            }
 		        } else {
-		            if (SafeMath.add(bets.coinbets[ranks[3]].totalBets, game.minDiffBets) < bets.coinbets[ranks[2]].totalBets) {
+		            if (bets.coinbets[ranks[3]].totalBetAmount.add(game.minDiffBets) < bets.coinbets[ranks[2]].totalBetAmount) {
 		                game.isFinished = true;
 		                game.winnerCoinIds.push(ranks[2]);
 	                }
@@ -274,7 +290,122 @@ library GameLogicLib {
 		    }
 		}
 		
+		if (game.isFinished) {
+		    calculateAwardForCoin(game, bets);
+		}
+		
 		return game.isFinished;
+	}
+	
+	function bet(Instance storage game, GameBets storage gameBets, uint256 coinId, address txFeeReceiver)
+	    public 
+	{
+	    require(coinId < 5);
+	    require(state(game) == State.Open);
+	    require(address(0) != txFeeReceiver && address(this) != txFeeReceiver);
+	    
+	    uint256 txFeeAmount = msg.value.mul(game.txFee).div(1000);
+	    txFeeReceiver.transfer(txFeeAmount);
+	    
+	    CoinBets storage c = gameBets.coinbets[coinId];
+	    
+	    c.bets.length++;
+	    Bets storage b = c.bets[c.bets.length - 1];
+	    b.betAmount = msg.value.sub(txFeeAmount);
+	    
+	    c.totalBetAmount = b.betAmount.add(c.totalBetAmount);
+	    gameBets.awardAmount = b.betAmount.add(gameBets.awardAmount);
+	    b.totalBetAmountByFar = c.totalBetAmount;
+	    
+	    c.playerBetMap[msg.sender].push(c.bets.length - 1);
+	    
+	    if (b.betAmount > c.largestBetAmount) {
+            c.largestBetAmount = b.betAmount;
+            c.numberOfLargestBetTx = 1;
+            
+            if (!isBetInformationHidden(game)) {     
+        	    emit CoinLargestBetChanged(game.id, coinId, b.betAmount);
+            }
+        } else if (b.betAmount == c.largestBetAmount) {
+            ++c.numberOfLargestBetTx;
+        }
+        
+        if (!isBetInformationHidden(game)) {
+            emit CoinBet(game.id, coinId, msg.sender, b.betAmount);
+        }
+	}
+	
+	function isBetInformationHidden(Instance storage game) 
+	    public 
+	    view 
+	    returns (bool)
+	{
+	    return now <= game.closeTime 
+	        && now.add(game.hiddenTimeBeforeClose) > game.closeTime;
+    }
+    
+    function calculateAwardForCoin(Instance storage game, GameBets storage bets) 
+        public
+    {
+        require(state(game) == State.Closed);
+        uint256 awardAmount = bets.awardAmount.div(game.winnerCoinIds.length);
+        
+        for (uint256 i = 0; i < game.winnerCoinIds.length; ++i) {
+	        CoinBets storage c = bets.coinbets[game.winnerCoinIds[i]];
+	        c.yThreshold = c.bets.length.mul(uint256(game.Y)).div(100);
+            if (c.yThreshold.mul(100) < c.bets.length.mul(uint256(game.Y))) {
+	            ++c.yThreshold;
+	        }
+	        
+	        if (c.yThreshold >= c.bets.length) {
+	            --c.yThreshold;
+	        }
+	        
+	        c.awardAmountBeforeY = awardAmount.mul(game.A).div(100);
+	        c.awardAmountAfterY = awardAmount.mul(game.B).div(100);
+	        c.awardAmountForLargestBetPlayers = awardAmount
+	            .sub(c.awardAmountBeforeY)
+	            .sub(c.awardAmountAfterY)
+	            .div(c.numberOfLargestBetTx);
+	            
+	        c.totalBetAmountBeforeY = c.bets[c.yThreshold].totalBetAmountByFar;
+	        c.totalBetAmountAfterY = c.totalBetAmount.sub(c.totalBetAmountBeforeY);
+	    }
+    }
+	
+	function calculateAwardAmount(Instance storage game, GameBets storage bets)
+	    public 
+	    view 
+	    returns (uint256 amount)
+	{
+	    require(state(game) == State.Closed);
+	    require(0 < game.winnerCoinIds.length);
+	    
+	    if (bets.isAwardTransfered[msg.sender]) {
+            return 0;
+        }
+	
+	    amount = 0;
+	    
+	    for (uint256 i = 0; i < game.winnerCoinIds.length; ++i) {
+	        CoinBets storage c = bets.coinbets[game.winnerCoinIds[i]];
+	        uint256[] storage betIdList = c.playerBetMap[msg.sender];
+	        
+	        for (uint256 j = 0; j < betIdList.length; ++j) {
+	            Bets storage b = c.bets[betIdList[j]];
+	            if (betIdList[j] <= c.yThreshold) {
+	                amount = amount.add(
+	                    c.awardAmountBeforeY.mul(b.betAmount).div(c.totalBetAmountBeforeY));
+	            } else {
+	                amount = amount.add(
+	                    c.awardAmountAfterY.mul(b.betAmount).div(c.totalBetAmountAfterY));
+	            }
+	            
+	            if (b.betAmount == c.largestBetAmount) {
+	                amount = amount.add(c.awardAmountForLargestBetPlayers);
+	            }
+	        }
+	    }
 	}
 	
 	function isEqualTo(int32 start0, int32 end0, int32 start1, int32 end1) 
@@ -300,102 +431,4 @@ library GameLogicLib {
     {
 	    return ((end0 - start0) * start1) < ((end1 - start1) * start0);
 	}
-	
-	function getLargestBets(CoinBets storage _cbets)
-	    public 
-	    view 
-	    returns (uint256)
-	{
-	    return (_cbets.largestBetIds.length > 0) ? _cbets.bets[_cbets.largestBetIds[0]].amount : 0;
-	}
-}
-
-contract AA {
-    Game.Instance[] public games;
-    
-    constructor() public {
-        games.length++;
-        Game.Instance storage game0 = games[games.length - 1];
-        game0.openTime = now + 5 minutes;
-	    game0.closeTime = now + 10 minutes;
-	    game0.isFinished = false;
-	    game0.isYChoosed = false;
-	    
-	    games.length++;
-        Game.Instance storage game1 = games[games.length - 1];
-        game1.openTime = now + 5 minutes;
-	    game1.closeTime = now + 10 minutes;
-	    game1.isFinished = false;
-	    game1.isYChoosed = false;
-	    game1.coins[0].startExRate = 1;
-	    game1.coins[1].startExRate = 1;
-	    game1.coins[2].startExRate = 1;
-	    game1.coins[3].startExRate = 1;
-	    game1.coins[4].startExRate = 1;
-	    
-	    games.length++;
-        Game.Instance storage game2 = games[games.length - 1];
-        game2.openTime = now - 5 minutes;
-	    game2.closeTime = now + 10 minutes;
-	    game2.isFinished = false;
-	    game2.isYChoosed = false;
-	    
-	    games.length++;
-        Game.Instance storage game3 = games[games.length - 1];
-        game3.openTime = now - 5 minutes;
-	    game3.closeTime = now + 10 minutes;
-	    game3.isFinished = false;
-	    game3.isYChoosed = false;
-	    game3.coins[0].startExRate = 1;
-	    game3.coins[1].startExRate = 1;
-	    game3.coins[2].startExRate = 1;
-	    game3.coins[3].startExRate = 1;
-	    game3.coins[4].startExRate = 1;
-	    
-	    games.length++;
-        Game.Instance storage game4 = games[games.length - 1];
-        game4.openTime = now - 15 minutes;
-	    game4.closeTime = now - 5 minutes;
-	    game4.isFinished = false;
-	    game4.isYChoosed = false;
-	    game4.coins[0].startExRate = 1;
-	    game4.coins[1].startExRate = 1;
-	    game4.coins[2].startExRate = 1;
-	    game4.coins[3].startExRate = 1;
-	    game4.coins[4].startExRate = 1;
-	    
-	    games.length++;
-        Game.Instance storage game5 = games[games.length - 1];
-        game5.openTime = now - 15 minutes;
-	    game5.closeTime = now - 5 minutes;
-	    game5.isFinished = false;
-	    game5.isYChoosed = true;
-	    game5.coins[0].startExRate = game5.coins[0].endExRate = 1;
-	    game5.coins[1].startExRate = game5.coins[1].endExRate = 1;
-	    game5.coins[2].startExRate = game5.coins[2].endExRate = 1;
-	    game5.coins[3].startExRate = game5.coins[3].endExRate = 1;
-	    game5.coins[4].startExRate = game5.coins[4].endExRate = 1;
-	    
-	    games.length++;
-        Game.Instance storage game6 = games[games.length - 1];
-        game6.openTime = now - 15 minutes;
-	    game6.closeTime = now - 5 minutes;
-	    game6.isFinished = true;
-	    game6.isYChoosed = true;
-	    game6.coins[0].startExRate = game6.coins[0].endExRate = 1;
-	    game6.coins[1].startExRate = game6.coins[1].endExRate = 1;
-	    game6.coins[2].startExRate = game6.coins[2].endExRate = 1;
-	    game6.coins[3].startExRate = game6.coins[3].endExRate = 1;
-	    game6.coins[4].startExRate = game6.coins[4].endExRate = 1;
-    }
-    
-    function aa() public view returns (Game.State[7] states) {
-        states[0] = Game.state(games[0]);
-        states[1] = Game.state(games[1]);
-        states[2] = Game.state(games[2]);
-        states[3] = Game.state(games[3]);
-        states[4] = Game.state(games[4]);
-        states[5] = Game.state(games[5]);
-        states[6] = Game.state(games[6]);
-    }
 }
