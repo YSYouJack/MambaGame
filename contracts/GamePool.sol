@@ -31,17 +31,23 @@ contract GamePool is Ownable, usingOraclize {
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate);
     event EndExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate);
     event Log(string message);
+    event LogAddr(address addr);
     event Closed(uint256 indexed gameId);
 	event Extended(uint256 indexed gameId);
 	event CoinBet(uint256 indexed gameId, uint256 coinId, address player, uint256 amount);
 	event CoinLargestBetChanged(uint256 indexed gameId, uint256 coinId, uint256 amount);
 	event SendAwards(uint256 indexed gameId, address player, uint256 awards);
-	event SendRemainAwards(uint256 indexed gameId, address teamWallet, uint256 awards);
 	event GameYChoosed(uint256 indexed gameId, uint8 Y);
+	event OraclizeFeeReceived(uint256 received);
+	event OraclizeFeeUsed(uint256 used);
+	event SentOraclizeQuery(bytes32 queryId);
     
     constructor(address _txFeeReceiver) public {
         require(address(0) != _txFeeReceiver);
         txFeeReceiver = _txFeeReceiver;
+        
+        OAR = OraclizeAddrResolverI(0x7098CEa4110A2887eEeDe9F40Fe535fa89B248A3);
+        emit LogAddr(oraclize_cbAddress());
     }
     
     function createNewGame(uint256 _openTime
@@ -146,27 +152,23 @@ contract GamePool is Ownable, usingOraclize {
 		game.isFinished = false;
 		game.isYChoosed = false;
 	}
-    
-    function gameCoinData(uint256 _gameId)
+	
+	function gameCoinData(uint256 _gameId, uint256 _coinId)
 	    public 
 	    view 
-	    returns (string coinName0, string coinName1, string coinName2, string coinName3, string coinName4
-	        , int32[5] startExRate, int32[5] endExRate)
+	    returns (string name, int32 startExRate, uint256 timeStampOfStartExRate
+	             , int32 endExRate, uint256 timeStampOfEndExRate)
 	{
 	    require(_gameId < games.length);
+	    require(_coinId < 5);
 	    
 	    GameLogic.Instance storage game = games[_gameId];
 	    
-	    coinName0 = game.coins[0].name;
-	    coinName1 = game.coins[1].name;
-	    coinName2 = game.coins[2].name;
-	    coinName3 = game.coins[3].name;
-	    coinName4 = game.coins[4].name;
-	    
-	    for (uint256 i = 0; i < 5; ++i) {
-	        startExRate[i] = game.coins[i].startExRate;
-	        endExRate[i] = game.coins[i].endExRate;
-	    }
+	    name = game.coins[_coinId].name;
+	    startExRate = game.coins[_coinId].startExRate;
+	    timeStampOfStartExRate = game.coins[_coinId].timeStampOfStartExRate;
+	    endExRate = game.coins[_coinId].endExRate;
+	    timeStampOfEndExRate = game.coins[_coinId].timeStampOfEndExRate;
 	}
 	
 	function gameBetData(uint256 _gameId, uint256 _coinId)
@@ -248,15 +250,10 @@ contract GamePool is Ownable, usingOraclize {
         // Query all start exchange rate.
 		string memory url;
 		bytes32 queryId;
-		uint256 fee = 0;
 		
 		for (uint256 i = 0; i < 5; ++i) {
-		    fee = oraclize_getPrice("URL", ORICALIZE_GAS_LIMIT);
-		    require(fee <= oraclizeFee);
-		    oraclizeFee = oraclizeFee.sub(fee);
-		    
 		    url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[i].name, "USDT).price");
-		    queryId = oraclize_query("URL", url, ORICALIZE_GAS_LIMIT);
+		    queryId = _doOraclizeQuery(url);
 		    queryRecords[queryId] = QueryRecord(RecordType.StartExRate, game.id, i);
 		}
     }	
@@ -275,30 +272,21 @@ contract GamePool is Ownable, usingOraclize {
         // Query all end exchange rate.
 		string memory url;
 		bytes32 queryId;
-		uint256 fee = 0;
 		
 		for (uint256 i = 0; i < 5; ++i) {
-		    fee = oraclize_getPrice("URL", ORICALIZE_GAS_LIMIT);
-		    require(fee <= oraclizeFee);
-		    oraclizeFee = oraclizeFee.sub(fee);
-		    
 		    url = strConcat("json(https://api.binance.com/api/v3/ticker/price?symbol=", game.coins[i].name, "USDT).price");
-		    queryId = oraclize_query("URL", url);
+		    queryId = _doOraclizeQuery(url);
 		    queryRecords[queryId] = QueryRecord(RecordType.EndExRate, game.id, i);
 		}
 		
 		// Query rand y.
-		fee = oraclize_getPrice("URL", ORICALIZE_GAS_LIMIT);
-		require(fee <= oraclizeFee);
-		oraclizeFee = oraclizeFee.sub(fee);
-		
-		queryId = oraclize_query("URL", "https://www.random.org/integers/?num=1&min=0&max=49&col=1&base=10&format=plain&rnd=new");
+		queryId = _doOraclizeQuery("https://www.random.org/integers/?num=1&min=0&max=49&col=1&base=10&format=plain&rnd=new");
 		queryRecords[queryId] = QueryRecord(RecordType.RandY, game.id, 0);
     }
     
-    function close(uint256 _gameId, uint256 _timeStampOfEndRate) 
+    function close(uint256 _gameId) 
 	    onlyOwner 
-	    public 
+	    public
 	    returns (bool)
 	{
 	    require(_gameId < games.length);
@@ -312,18 +300,13 @@ contract GamePool is Ownable, usingOraclize {
 		GameLogic.tryClose(game, bets);
 		
 		if (game.isFinished) {
-		    game.timeStampOfEndRate = _timeStampOfEndRate;
-		    //_distributeAwards(game, bets);
-		    
 		    emit Closed(_gameId);
 		} else {
 		    game.closeTime = game.closeTime.add(game.duration);
-		    if (game.closeTime <= now) {
-		        game.closeTime = now.add(game.duration);
-		    }
-		    
 		    emit Extended(_gameId);
 		}
+		
+		return game.isFinished;
 	}
 	
 	function calculateAwardAmount(uint256 _gameId) public view returns (uint256) {
@@ -364,6 +347,7 @@ contract GamePool is Ownable, usingOraclize {
     
     function sendOraclizeFee() public payable {
         oraclizeFee = oraclizeFee.add(msg.value);
+        emit OraclizeFeeReceived(msg.value);
     }
     
     function () public payable {
@@ -384,20 +368,32 @@ contract GamePool is Ownable, usingOraclize {
 	        emit GameYChoosed(gameId, game.Y);
 	    } else {
 	        uint256 coinId = queryRecords[_id].arg;
-	        
 	        if (RecordType.StartExRate == queryRecords[_id].recordType) {
 	            game.coins[coinId].startExRate = int32(parseInt(_result, 2));
-	            game.timeStampOfStartRate = now;
+	            game.coins[coinId].timeStampOfStartExRate = now;
 	            delete queryRecords[_id];
 	            emit StartExRateUpdated(gameId, coinId, game.coins[coinId].startExRate);
 	        } else if (RecordType.EndExRate == queryRecords[_id].recordType) {
 	            game.coins[coinId].endExRate = int32(parseInt(_result, 2));
-	            game.timeStampOfEndRate = now;
+	            game.coins[coinId].timeStampOfEndExRate = now;
 	            delete queryRecords[_id];
 	            emit EndExRateUpdated(gameId, coinId, game.coins[coinId].endExRate);
 	        } else {
 	            revert();
 	        }
 	    }
-     }
+    }
+    
+    function _doOraclizeQuery(string url) private returns (bytes32) {
+		uint256 fee = oraclize_getPrice("URL", ORICALIZE_GAS_LIMIT);
+		require(fee <= oraclizeFee);
+		oraclizeFee = oraclizeFee.sub(fee);
+		
+		bytes32 queryId = oraclize_query("URL", url, ORICALIZE_GAS_LIMIT);
+		
+		emit OraclizeFeeUsed(fee);
+		emit SentOraclizeQuery(queryId);
+		
+		return queryId;
+    }
 }

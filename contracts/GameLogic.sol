@@ -15,7 +15,9 @@ library GameLogic {
 	struct Coin {
 		string name;
 		int32  startExRate;
+		uint256 timeStampOfStartExRate;
 		int32  endExRate;
+		uint256 timeStampOfEndExRate;
 	}
 	
 	struct CoinBets {
@@ -48,8 +50,6 @@ library GameLogic {
 	    bool isFinished;
 	    bool isYChoosed;
 	    uint256 minDiffBets;
-	    uint256 timeStampOfStartRate;
-	    uint256 timeStampOfEndRate;
 	    
 	    uint256[] winnerCoinIds;
 	    

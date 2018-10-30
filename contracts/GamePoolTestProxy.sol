@@ -7,7 +7,6 @@ contract GamePoolTestProxy is GamePool {
     constructor(address txFeeReceiver) public
         GamePool(txFeeReceiver)
     {
-        
     }
     
     function setStartExRate(uint256 _gameId, int32[5] _rates, uint256 _timeStamp)
