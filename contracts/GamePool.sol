@@ -46,7 +46,7 @@ contract GamePool is Ownable, usingOraclize {
         require(address(0) != _txFeeReceiver);
         txFeeReceiver = _txFeeReceiver;
         
-        OAR = OraclizeAddrResolverI(0x7098CEa4110A2887eEeDe9F40Fe535fa89B248A3);
+        //OAR = OraclizeAddrResolverI(0x7098CEa4110A2887eEeDe9F40Fe535fa89B248A3);
         emit LogAddr(oraclize_cbAddress());
     }
     
