@@ -46,8 +46,8 @@ contract GamePool is Ownable, usingOraclize {
         require(address(0) != _txFeeReceiver);
         txFeeReceiver = _txFeeReceiver;
         
-        //OAR = OraclizeAddrResolverI(0x7098CEa4110A2887eEeDe9F40Fe535fa89B248A3);
-        emit LogAddr(oraclize_cbAddress());
+        //OAR = OraclizeAddrResolverI(0x0BffB729b30063E53A341ba6a05dfE8f817E7a53);
+        //emit LogAddr(oraclize_cbAddress());
     }
     
     function createNewGame(uint256 _openTime
@@ -134,7 +134,7 @@ contract GamePool is Ownable, usingOraclize {
 		
 		game.id = games.length - 1;
 		game.openTime = _openTime;
-		game.closeTime = _openTime + _duration;
+		game.closeTime = _openTime + _duration - 1;
 		game.duration = _duration;
 		game.hiddenTimeBeforeClose = HIDDEN_TIME_BEFORE_CLOSE;
 		
@@ -337,8 +337,19 @@ contract GamePool is Ownable, usingOraclize {
 		    emit SendAwards(_gameId, msg.sender, amount);
 		}
 	}
+	
+	function closeErrorGame(uint256 _gameId)
+	    public 
+	{
+        require(_gameId < games.length);
+	    require(_gameId < gameBets.length);
+	    
+	    GameLogic.Instance storage game = games[_gameId];
+		GameLogic.GameBets storage bets = gameBets[_gameId];
+		GameLogic.closeErrorGame(game, bets);
+	}
     
-    function withdraworaclizeFee() public onlyOwner {
+    function withdrawOraclizeFee() public onlyOwner {
         require(address(this).balance >= oraclizeFee);
         uint256 amount = oraclizeFee;
         oraclizeFee = 0;

@@ -304,7 +304,7 @@ library GameLogic {
 		return game.isFinished;
 	}
 	
-	function forceClose(Instance storage game, GameBets storage gameBets)
+	function closeErrorGame(Instance storage game, GameBets storage gameBets)
 	    public 
 	{
         require(state(game) == State.Error && 0 == gameBets.awardAmount);
@@ -366,23 +366,32 @@ library GameLogic {
         
         for (uint256 i = 0; i < game.winnerCoinIds.length; ++i) {
 	        CoinBets storage c = bets.coinbets[game.winnerCoinIds[i]];
+	        require(c.bets.length > 0);
+	        
 	        c.yThreshold = c.bets.length.mul(uint256(game.Y)).div(100);
             if (c.yThreshold.mul(100) < c.bets.length.mul(uint256(game.Y))) {
 	            ++c.yThreshold;
 	        }
 	        
-	        if (c.yThreshold >= c.bets.length) {
-	            --c.yThreshold;
+	        c.awardAmountAfterY = awardAmount.mul(game.B).div(100);
+	       
+	        if (c.yThreshold == 0) {
+	            c.awardAmountBeforeY = 0;
+	            c.totalBetAmountBeforeY = 0;
+	        } else if (c.bets.length == 1) {
+	            c.awardAmountBeforeY = awardAmount;
+	            c.awardAmountAfterY = 0;
+	            c.totalBetAmountBeforeY = c.totalBetAmount;
+	        } else {
+	            c.awardAmountBeforeY = awardAmount.mul(game.A).div(100);
+	            c.totalBetAmountBeforeY = c.bets[c.yThreshold - 1].totalBetAmountByFar;
 	        }
 	        
-	        c.awardAmountBeforeY = awardAmount.mul(game.A).div(100);
-	        c.awardAmountAfterY = awardAmount.mul(game.B).div(100);
 	        c.awardAmountForLargestBetPlayers = awardAmount
 	            .sub(c.awardAmountBeforeY)
 	            .sub(c.awardAmountAfterY)
 	            .div(c.numberOfLargestBetTx);
-	            
-	        c.totalBetAmountBeforeY = c.bets[c.yThreshold].totalBetAmountByFar;
+	        
 	        c.totalBetAmountAfterY = c.totalBetAmount.sub(c.totalBetAmountBeforeY);
 	    }
     }
@@ -407,7 +416,7 @@ library GameLogic {
 	        
 	        for (uint256 j = 0; j < betIdList.length; ++j) {
 	            Bets storage b = c.bets[betIdList[j]];
-	            if (betIdList[j] <= c.yThreshold) {
+	            if (betIdList[j] < c.yThreshold) {
 	                amount = amount.add(
 	                    c.awardAmountBeforeY.mul(b.betAmount).div(c.totalBetAmountBeforeY));
 	            } else {

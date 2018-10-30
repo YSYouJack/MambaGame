@@ -9,7 +9,7 @@ contract GamePoolTestProxy is GamePool {
     {
     }
     
-    function setStartExRate(uint256 _gameId, int32[5] _rates, uint256 _timeStamp)
+    function setStartExRate(uint256 _gameId, int32[5] _rates)
         public 
     {
         require(_gameId < games.length);
@@ -17,12 +17,11 @@ contract GamePoolTestProxy is GamePool {
 	    GameLogic.Instance storage game = games[_gameId];
 	    for (uint256 i = 0; i < 5; ++i) {
 	        game.coins[i].startExRate = _rates[i];
+	        game.coins[i].timeStampOfStartExRate = now;
 	    }
-	    
-	    game.timeStampOfStartRate = _timeStamp;
     }
     
-    function setEndExRate(uint256 _gameId, int32[5] _rates, uint256 _timeStamp) 
+    function setEndExRate(uint256 _gameId, int32[5] _rates) 
         public
     {
         require(_gameId < games.length);
@@ -30,9 +29,8 @@ contract GamePoolTestProxy is GamePool {
 	    GameLogic.Instance storage game = games[_gameId];
 	    for (uint256 i = 0; i < 5; ++i) {
 	        game.coins[i].endExRate = _rates[i];
+	        game.coins[i].timeStampOfEndExRate = now;
 	    }
-	    
-	     game.timeStampOfEndRate = _timeStamp;
     }
     
     function setOpenCloseTime(uint256 _gameId, uint256 _openTime, uint256 _closeTime) 
@@ -65,7 +63,7 @@ contract GamePoolTestProxy is GamePool {
 	    game.isYChoosed = true;
     }
     
-    function close(uint256 _gameId, uint256 _timeStampOfEndRate) 
+    function close(uint256 _gameId) 
 	    onlyOwner 
 	    public 
 	    returns (bool)
@@ -73,8 +71,15 @@ contract GamePoolTestProxy is GamePool {
         require(_gameId < games.length);
 	   
 	    GameLogic.Instance storage game = games[_gameId];
+	    game.openTime = now - 10 minutes;
 	    game.closeTime = now - 5 seconds;
-	    return super.close(_gameId, _timeStampOfEndRate);
+	    return super.close(_gameId);
+    }
+    
+    function forceToCloseAllGames() onlyOwner public {
+        for (uint256 i = 0; i < games.length; ++i) {
+	        games[i].isFinished = true;
+	    }
     }
     
     // Callback for oraclize query.
