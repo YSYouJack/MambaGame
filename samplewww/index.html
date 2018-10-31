@@ -7,16 +7,18 @@
 		<script type="text/javascript" src="./javascripts/app.js"></script>
 	</head>
 	<body>
-		<h2>Mamba Game Manager</h2>
-		Address: <span id ="manager-addr">xxx</span></br>
-		Is inited: <span id ="manager-is-inited">xxx</span></br>
+		<h2>Mamba Game Pool</h2>
+		Address: <span id ="addr">xxx</span></br>
+		Is inited: <span id ="is-inited">xxx</span></br>
 		Number of games: <span id ="number-of-games">0</span></br>
+		Minimum bets: <span id ="min-bets">xxx</span> ether</br>
+		Wallet for Receiving fee: <span id ="tx-fee-receiver">xxx</span></br>
+		
 		<select id="game-selector">
 			<option value="" disabled selected>Choose game</option>
 		</select>
 		<hr>
 		<h2>Mamba Game <span id="game-id">---</span></h2>
-		Address: <span id ="game-addr">xxx</span></br>
 		Open time: <span id ="game-open-time">xxx</span></br>
 		Close time: <span id ="game-close-time">xxx</span></br>
 		Game duration per unit: <span id ="game-duration">xxx</span> ms</br>
@@ -25,12 +27,8 @@
 		B: <span id ="game-b">xxx</span>%</br>
 		Tx Fee: <span id ="game-txfee">xxx</span>%</br>
 		Minimum Difference Bets For Winner: <span id ="game-min-diff-bets">xxx</span> ether</br>
-		Time stamp of starting exrate: <span id ="game-time-start-exrate">xxx</span></br>
-		Time stamp of ending exrate: <span id ="game-time-end-exrate">xxx</span></br>
-		Is Closed: <span id ="game-isclosed">xxx</span></br>
-		Minimum bets: <span id ="game-min-bets">xxx</span> ether</br>
+		State: <span id ="game-state">xxx</span></br>
 		Hidden Time Length Before Game Closed: <span id ="game-hidden-time">xxx</span> ms</br>
-		Wallet for Receiving fee: <span id ="game-wallet">xxx</span></br>
 		Y Distribution Length: <span id="game-y-dist-length">xxx</span></br>	
 		Y Distribution: [<span id="game-y-dist">xxx</span>]</br>
 		Winner ids: <span id="game-winner"></span></br>
@@ -49,52 +47,41 @@
 			<button type="submit" id="bet-form-submit-btn" disabled>Bet</button>
 		</form>
 		
-		
 		<p>
-		<strong>Coin 0</strong></br>
-		Name: <span id ="coins-0-name">xxx</span></br>
-		Start Exrate: <span id ="coins-0-start-exrate">xxx</span></br>
-		Current Exrate: <span id ="coins-0-current-exrate">xxx</span></br>
-		End Exrate: <span id ="coins-0-end-exrate">xxx</span></br>
-		Total bets: <span id ="coins-0-total-bets">xxx</span> ether</br>
-		Largest bets: <span id ="coins-0-largest-bets">xxx</span> ether</br>
-		Number of bets: <span id ="coins-0-number-of-bets">xxx</span></br>
+		<strong>Coin 0 - <span id ="coins-0-name">xxx</span> </strong> <span id ="coins-0-current-exrate">xxx</span> </br>
+		Start Exrate: <span id ="coins-0-start-exrate">xxx</span> <span id ="coins-0-start-exrate-time">xxx</span></br>
+		End Exrate: <span id ="coins-0-end-exrate">xxx</span> <span id ="coins-0-end-exrate-time">xxx</span> </br>
+		Total bets: <span id ="coins-0-total-bets">xxx</span> ether
+		Largest bets: <span id ="coins-0-largest-bets">xxx</span> ether
+		Number of bets: <span id ="coins-0-number-of-bets">xxx</span>
 		<p>
-		<strong>Coin 1</strong></br>
-		Name: <span id ="coins-1-name">xxx</span></br>
-		Start Exrate: <span id ="coins-1-start-exrate">xxx</span></br>
-		Current Exrate: <span id ="coins-1-current-exrate">xxx</span></br>
-		End Exrate: <span id ="coins-1-end-exrate">xxx</span></br>
-		Total bets: <span id ="coins-1-total-bets">xxx</span> ether</br>
-		Largest bets: <span id ="coins-1-largest-bets">xxx</span> ether</br>
-		Number of bets: <span id ="coins-1-number-of-bets">xxx</span></br>
+		<strong>Coin 1 - <span id ="coins-1-name">xxx</span> </strong> <span id ="coins-1-current-exrate">xxx</span> </br>
+		Start Exrate: <span id ="coins-1-start-exrate">xxx</span> <span id ="coins-1-start-exrate-time">xxx</span></br>
+		End Exrate: <span id ="coins-1-end-exrate">xxx</span> <span id ="coins-1-end-exrate-time">xxx</span> </br>
+		Total bets: <span id ="coins-1-total-bets">xxx</span> ether
+		Largest bets: <span id ="coins-1-largest-bets">xxx</span> ether
+		Number of bets: <span id ="coins-1-number-of-bets">xxx</span>
 		<p>
-		<strong>Coin 2</strong></br>
-		Name: <span id ="coins-2-name">xxx</span></br>
-		Start Exrate: <span id ="coins-2-start-exrate">xxx</span></br>
-		Current Exrate: <span id ="coins-2-current-exrate">xxx</span></br>
-		End Exrate: <span id ="coins-2-end-exrate">xxx</span></br>
-		Total bets: <span id ="coins-2-total-bets">xxx</span> ether</br>
-		Largest bets: <span id ="coins-2-largest-bets">xxx</span> ether</br>
-		Number of bets: <span id ="coins-2-number-of-bets">xxx</span></br>
+		<strong>Coin 2 - <span id ="coins-2-name">xxx</span> </strong> <span id ="coins-2-current-exrate">xxx</span> </br>
+		Start Exrate: <span id ="coins-2-start-exrate">xxx</span> <span id ="coins-2-start-exrate-time">xxx</span></br>
+		End Exrate: <span id ="coins-2-end-exrate">xxx</span> <span id ="coins-2-end-exrate-time">xxx</span> </br>
+		Total bets: <span id ="coins-2-total-bets">xxx</span> ether
+		Largest bets: <span id ="coins-2-largest-bets">xxx</span> ether
+		Number of bets: <span id ="coins-2-number-of-bets">xxx</span>
 		<p>
-		<strong>Coin 3</strong></br>
-		Name: <span id ="coins-3-name">xxx</span></br>
-		Start Exrate: <span id ="coins-3-start-exrate">xxx</span></br>
-		Current Exrate: <span id ="coins-3-current-exrate">xxx</span></br>
-		End Exrate: <span id ="coins-3-end-exrate">xxx</span></br>
-		Total bets: <span id ="coins-3-total-bets">xxx</span> ether</br>
-		Largest bets: <span id ="coins-3-largest-bets">xxx</span> ether</br>
-		Number of bets: <span id ="coins-3-number-of-bets">xxx</span></br>
+		<strong>Coin 3 - <span id ="coins-3-name">xxx</span> </strong> <span id ="coins-3-current-exrate">xxx</span> </br>
+		Start Exrate: <span id ="coins-3-start-exrate">xxx</span> <span id ="coins-3-start-exrate-time">xxx</span></br>
+		End Exrate: <span id ="coins-3-end-exrate">xxx</span> <span id ="coins-3-end-exrate-time">xxx</span> </br>
+		Total bets: <span id ="coins-3-total-bets">xxx</span> ether
+		Largest bets: <span id ="coins-3-largest-bets">xxx</span> ether
+		Number of bets: <span id ="coins-3-number-of-bets">xxx</span>
 		<p>
-		<strong>Coin 4</strong></br>
-		Name: <span id ="coins-4-name">xxx</span></br>
-		Start Exrate: <span id ="coins-4-start-exrate">xxx</span></br>
-		Current Exrate: <span id ="coins-4-current-exrate">xxx</span></br>
-		End Exrate: <span id ="coins-4-end-exrate">xxx</span></br>
-		Total bets: <span id ="coins-4-total-bets">xxx</span> ether</br>
-		Largest bets: <span id ="coins-4-largest-bets">xxx</span> ether</br>
-		Number of bets: <span id ="coins-4-number-of-bets">xxx</span></br>
+		<strong>Coin 4 - <span id ="coins-4-name">xxx</span> </strong> <span id ="coins-4-current-exrate">xxx</span> </br>
+		Start Exrate: <span id ="coins-4-start-exrate">xxx</span> <span id ="coins-4-start-exrate-time">xxx</span></br>
+		End Exrate: <span id ="coins-4-end-exrate">xxx</span> <span id ="coins-4-end-exrate-time">xxx</span> </br>
+		Total bets: <span id ="coins-4-total-bets">xxx</span> ether
+		Largest bets: <span id ="coins-4-largest-bets">xxx</span> ether
+		Number of bets: <span id ="coins-4-number-of-bets">xxx</span>
 		
 		<hr/>
 		Events: <span id="game-event"></span>

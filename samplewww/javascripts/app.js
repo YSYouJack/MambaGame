@@ -1,12 +1,14 @@
 window.addEventListener('load', function () {
 	var game;
 	
-	mambaGameManager.init().then(function () {
-		document.getElementById("manager-addr").innerHTML = mambaGameManager.address;
-		document.getElementById("manager-is-inited").innerHTML = mambaGameManager.isInited;
-		document.getElementById("number-of-games").innerHTML = mambaGameManager.numberOfGames;
+	mambaGamePool.init().then(function () {
+		document.getElementById("addr").innerHTML = mambaGamePool.address;
+		document.getElementById("is-inited").innerHTML = mambaGamePool.isInited;
+		document.getElementById("number-of-games").innerHTML = mambaGamePool.numberOfGames;
+		document.getElementById("min-bets").innerHTML = mambaGamePool.minimumBets;
+		document.getElementById("tx-fee-receiver").innerHTML = mambaGamePool.txFeeReceiver;
 		
-		mambaGameManager.subscribeForNewGame(function (numberOfGames) {
+		mambaGamePool.subscribeForNewGame(function (numberOfGames) {
 			document.getElementById("number-of-games").innerHTML = numberOfGames;
 			document.getElementById("game-event").innerHTML += 'New Game. ' + new Date() + '</br>';
 			
@@ -17,7 +19,7 @@ window.addEventListener('load', function () {
 		});
 		
 		let el = document.getElementById("game-selector");
-		for (let i = 0; i < mambaGameManager.numberOfGames; ++i) {
+		for (let i = 0; i < mambaGamePool.numberOfGames; ++i) {
 			el.innerHTML += '<option vaule="' + i + '">' + i + '</option>';
 		}
 		
@@ -29,20 +31,14 @@ window.addEventListener('load', function () {
 				return;
 			}
 			
-			mambaGameManager.game(gameId)
+			mambaGamePool.game(gameId)
 			.then(function (fetchGame) {
 				if (game) {
-					game.unsubscribe('Extended');
-					game.unsubscribe('Closed');
-					game.unsubscribe('Bet');
-					game.unsubscribe('LargestBetChanged');
-					game.unsubscribe('SendAwards');
-					game.unsubscribe('ExrateUpdated');
+					game.close();
 				} 
 				
 				game = fetchGame;
 				document.getElementById("game-id").innerHTML = gameId;
-				document.getElementById("game-addr").innerHTML = game.address;
 				document.getElementById("game-open-time").innerHTML = game.openTime;
 				document.getElementById("game-close-time").innerHTML = game.closeTime;
 				document.getElementById("game-duration").innerHTML = game.duration;
@@ -51,12 +47,8 @@ window.addEventListener('load', function () {
 				document.getElementById("game-b").innerHTML = game.B;
 				document.getElementById("game-txfee").innerHTML = game.txFee;
 				document.getElementById("game-min-diff-bets").innerHTML = game.minimumDifferenceBetsForWinner;
-				document.getElementById("game-time-start-exrate").innerHTML = game.timeStampOfStartRate;
-				document.getElementById("game-time-end-exrate").innerHTML = game.timeStampOfEndRate;
-				document.getElementById("game-isclosed").innerHTML = game.isClosed;
-				document.getElementById("game-min-bets").innerHTML = game.minimumBets;
+				document.getElementById("game-state").innerHTML = game.state;
 				document.getElementById("game-hidden-time").innerHTML = game.hiddenTimeLengthBeforeClose;
-				document.getElementById("game-wallet").innerHTML = game.teamWallet;
 				document.getElementById("game-y-dist-length").innerHTML = game.YDistribution.length;
 				document.getElementById("game-y-dist").innerHTML = game.YDistribution;
 				
@@ -64,28 +56,41 @@ window.addEventListener('load', function () {
 					document.getElementById("game-winner").innerHTML = game.winnerCoinIds;
 				}
 				
-				for(let i = 0; i < game.coins.length; ++i) {
+				for (let i = 0; i < game.coins.length; ++i) {
 					document.getElementById("coins-" + i + "-name").innerHTML = game.coins[i].name;
 					document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
+					document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
 					document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
+					document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
 					document.getElementById("coins-" + i + "-total-bets").innerHTML = game.coins[i].totalBets;
 					document.getElementById("coins-" + i + "-largest-bets").innerHTML = game.coins[i].largestBets;
 					document.getElementById("coins-" + i + "-number-of-bets").innerHTML = game.coins[i].numberOfBets;
 				}
 				
-				game.subscribe('Extended', function (closeTime) {
-					document.getElementById("game-event").innerHTML += '"Extended" ' + new Date() + '</br>';
-					document.getElementById("game-close-time").innerHTML = closeTime;
-				});
-				
-				game.subscribe('Closed', function () {
-					document.getElementById("game-event").innerHTML += '"Closed" ' + new Date() + '</br>';
-					document.getElementById("game-time-end-exrate").innerHTML = game.timeStampOfEndRate;
-					document.getElementById("game-y").innerHTML = game.Y;
-					for(let i = 0; i < game.coins.length; ++i) {
-						document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
+				game.subscribe('StateChanged', function (state) {
+					if (state === 'Open') {
+						document.getElementById("game-close-time").innerHTML = game.closeTime;
+						document.getElementById("game-y").innerHTML = game.Y;
+						for (let i = 0; i < game.coins.length; ++i) {
+							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
+							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
+							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
+							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
+						}
+					} else if (state == 'Ready') {
+						for (let i = 0; i < game.coins.length; ++i) {
+							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
+							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
+						}
+					} else if (state == 'WaitToClose') {
+						for (let i = 0; i < game.coins.length; ++i) {
+							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
+							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
+						}
+						document.getElementById("game-y").innerHTML = game.Y;
 					}
-					document.getElementById("game-winner").innerHTML = game.winnerCoinIds;
+					document.getElementById("game-state").innerHTML = state;
+					document.getElementById("game-event").innerHTML += '"StateChanged" ' + state + ' ' + new Date() + '</br>';
 				});
 				
 				game.subscribe('Bet', function (coinId, playerAddress, bets) {
@@ -121,7 +126,10 @@ window.addEventListener('load', function () {
 				}).catch(console.error);
 			}
 		});
-	}).catch(console.error);
+	}).catch(function (error) {
+		console.error(error);
+		alert(error.message);
+	});
 	
 });
 

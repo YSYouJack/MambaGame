@@ -6,79 +6,62 @@
 	} else if (typeof define === 'function' && define.amd) {
 		define(factory);
 	} else {
-		global.mambaGameManager = factory();
+		global.mambaGamePool = factory();
 	}
 }(this, function(){
+	
+	var mambaGameState = ['Created', 'Ready', 'Open', 'Stop', 'WaitToClose', 'Closed', 'Error'];
 	
 	// Mamba game definition.
 	function MambaGame(id) {
 		this.id = id;
 		
-		this.cb = {'Extended': null
-			, 'Closed': null
-			, 'Bet': null
+		this.cb = {'Bet': null
 			, 'LargestBetChanged': null
 			, 'SendAwards': null
 			, 'ExrateUpdated': null
+			, 'StartExRateUpdated': null
+			, 'EndExRateUpdated': null
+			, 'GameYChoosed': null
+			, 'StateChanged': null
 		};
 	}
 	
 	MambaGame.prototype.initBlockNumber = null;
 	MambaGame.prototype.contract = null;
 	MambaGame.prototype.minimumBets = null;
-	MambaGame.prototype.hiddenTimeLengthBeforeClose = null;
-	MambaGame.prototype.teamWallet = null;
+	MambaGame.prototype.txFeeReceiver = null;
 	MambaGame.prototype.fetchConstantValue = function() {
 		// Get reference of this.
 		var obj;
 		obj = this;
 	
 		return new Promise(function (resolve, reject) {
-			obj.contract.gameData(obj.id, function (error, result) {
+			obj.contract.games(obj.id, function (error, result) {
 				if (error) {
 					reject(error);
 				} else {
 					obj.openTime = new Date(1000 * result[1].toNumber());
 					obj.closeTime = new Date(1000 * result[2].toNumber());
 					obj.duration = 1000 * result[3].toNumber();
-					obj.Y = result[4].toNumber();
-					obj.A = result[5].toNumber();
-					obj.B = result[6].toNumber();
-					obj.txFee = result[7].toNumber() / 10;
-					obj.minimumDifferenceBetsForWinner = web3.fromWei(result[8].toString(), 'ether');
-					obj.timeStampOfStartRate = new Date(1000 * result[9].toNumber());
-					if (!result[10].isZero()) {
-						obj.timeStampOfEndRate = new Date(1000 * result[10].toNumber());
-					}			
-					
-					obj.isClosed = result[11];
+					obj.hiddenTimeLengthBeforeClose = 1000 * result[4].toNumber();
+					obj.Y = result[5].toNumber();
+					obj.A = result[6].toNumber();
+					obj.B = result[7].toNumber();
+					obj.txFee = result[8].toNumber() / 10;
+					obj.minimumDifferenceBetsForWinner = web3.fromWei(result[11].toString(), 'ether');
 					resolve();
 				}
 			});
 		}).then(function () {
 			return new Promise(function (resolve, reject) {
-				obj.contract.getGameYDistribution(obj.id, function (error, result) {
+				obj.contract.gameYDistribution(obj.id, function (error, result) {
 					if (error) {
 						reject(error);
 					} else {
-						obj.YDistribution = result;
-						resolve();
-					}
-				});
-			});
-		}).then(function () {
-			return new Promise(function (resolve, reject) {
-				obj.contract.getGameCoinData(obj.id, function (error, result) {
-					if (error) {
-						reject(error);
-					} else {
-						obj.coins = new Array(5);
-						for (let i = 0; i < 5; ++i) {
-							obj.coins[i] = { name: result[i]
-								, startExRate: result[5][i].toNumber() / 100
-								, currentExRate: result[5][i].toNumber() / 100
-								, endExRate: result[6][i].toNumber() / 100
-							};
+						obj.YDistribution = new Array(result.length);
+						for (let i = 0; i < result.length; ++i) {
+							obj.YDistribution[i] = result[i].toNumber();
 						}
 						resolve();
 					}
@@ -88,7 +71,34 @@
 			let promises = [];
 			for (let i = 0; i < 5; ++i) {
 				promises.push(new Promise(function (resolve, reject) {
-					obj.contract.getGameBetData(obj.id, i, function (error, result) {
+					obj.contract.gameCoinData(obj.id, i, function (error, result) {
+						if (error) {
+							reject(error);
+						} else {
+							resolve(result);
+						}
+					});
+				}));
+			}
+			
+			return Promise.all(promises).then(function (values) {
+				obj.coins = new Array(5);
+				for (let i = 0; i < 5; ++i) {
+					obj.coins[i] = { name: values[i][0]
+						, startExRate: values[i][1].toNumber() / 100
+						, timeStampOfStartExRate: new Date(1000 * values[i][2].toNumber())
+						, endExRate: values[i][3].toNumber() / 100
+						, timeStampOfEndExRate: new Date(1000 * values[i][4].toNumber())
+					};
+				}
+				
+				return Promise.resolve();
+			});
+		}).then(function () {
+			let promises = [];
+			for (let i = 0; i < 5; ++i) {
+				promises.push(new Promise(function (resolve, reject) {
+					obj.contract.gameBetData(obj.id, i, function (error, result) {
 						if (error) {
 							reject(error);
 						} else {
@@ -109,7 +119,7 @@
 			});
 		}).then(function () {
 			return new Promise(function (resolve, reject) {
-				obj.contract.getNumberOfWinnerCoinIds(obj.id, function (error, result) {
+				obj.contract.gameNumberOfWinnerCoinIds(obj.id, function (error, result) {
 					if (error) {
 						reject(error);
 					} else {
@@ -124,7 +134,7 @@
 				let promises = [];
 				for (let i = 0; i < numberOfWinnerCoinIds; ++i) {
 					promises.push(new Promise(function (resolve, reject) {
-						obj.contract.getWinnerCoinIds(obj.id, i, function(error, result) {
+						obj.contract.gameWinnerCoinIds(obj.id, i, function(error, result) {
 							if (error) {
 								reject(error);
 							} else {
@@ -140,30 +150,76 @@
 				});
 			}
 		}).then(function () {
-			let extendEvent = obj.contract.Extended({gameId: obj.id}, {fromBlock: 'latest'});
-			extendEvent.watch(function(error, result) {
+			return new Promise(function (resolve, reject) {
+				obj.contract.gameState(obj.id, function (error, result) {
+					if (error) {
+						reject(error);
+					} else {
+						obj.state = mambaGameState[result.toNumber()];
+						resolve();
+					}
+				});
+			});
+		}).then(function () {
+			// Add event callback.
+			obj.extendEvent = obj.contract.GameExtended({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.extendEvent.watch(function(error, result) {
 				if (!error) {
 					if (result.blockNumber > obj.initBlockNumber) {
-						obj.callbackForExtended();
+						obj.closeTime = new Date(result.args.closeTime.toNumber() * 1000);
+						obj.callbackForStateChanged('Open');
 					}
 				} else {
 					console.error(error);
 				}
 			});
 			
-			let closedEvent = obj.contract.Closed({gameId: obj.id}, {fromBlock: 'latest'});
-			closedEvent.watch(function(error, result) {
+			obj.closedEvent = obj.contract.GameClosed({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.closedEvent.watch(function(error, result) {
 				if (!error) {
 					if (result.blockNumber > obj.initBlockNumber) {
-						obj.callbackForClosed();
+						obj.callbackForStateChanged('Closed');
 					}
 				} else {
 					console.error(error);
 				}
 			});
 			
-			let coinBetEvent = obj.contract.CoinBet({gameId: obj.id}, {fromBlock: 'latest'});
-			coinBetEvent.watch(function(error, result) {
+			obj.waitToCloseEvent = obj.contract.GameWaitToClose({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.waitToCloseEvent.watch(function(error, result) {
+				if (!error) {
+					if (result.blockNumber > obj.initBlockNumber) {
+						obj.callbackForStateChanged('WaitToClose');
+					}
+				} else {
+					console.error(error);
+				}
+			});
+			
+			obj.readyEvent = obj.contract.GameReady({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.readyEvent.watch(function(error, result) {
+				if (!error) {
+					if (result.blockNumber > obj.initBlockNumber) {
+						obj.callbackForStateChanged('Ready');
+					}
+				} else {
+					console.error(error);
+				}
+			});
+			
+			obj.openEvent = obj.contract.GameOpened({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.openEvent.watch(function(error, result) {
+				if (!error) {
+					if (result.blockNumber > obj.initBlockNumber) {
+						obj.callbackForStateChanged('Open');
+					}
+				} else {
+					console.error(error);
+				}
+			});
+			
+			obj.coinBetEvent = obj.contract.CoinBet({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.coinBetEvent.watch(function(error, result) {
 				if (!error) {
 					if (result.blockNumber > obj.initBlockNumber) {
 						obj.callbackForCoinBet(result.args.coinId.toNumber(), result.args.player, result.args.bets);
@@ -173,8 +229,8 @@
 				}
 			});
 			
-			let coinLargestBetEvent = obj.contract.CoinLargestBet({gameId: obj.id}, {fromBlock: 'latest'});
-			coinLargestBetEvent.watch(function(error, result) {
+			obj.coinLargestBetEvent = obj.contract.CoinLargestBetChanged({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.coinLargestBetEvent.watch(function(error, result) {
 				if (!error) {
 					if (result.blockNumber > obj.initBlockNumber) {
 						obj.callbackForCoinLargestBet(result.args.coinId.toNumber(), result.args.bets);
@@ -184,8 +240,8 @@
 				}
 			});
 			
-			let sendAwardsBetEvent = obj.contract.SendAwards({gameId: obj.id}, {fromBlock: 'latest'});
-			sendAwardsBetEvent.watch(function(error, result) {
+			obj.sendAwardsBetEvent = obj.contract.SendAwards({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.sendAwardsBetEvent.watch(function(error, result) {
 				if (!error) {
 					if (result.blockNumber > obj.initBlockNumber) {
 						obj.callbackForSendAwards(result.args.player, result.args.awards);
@@ -195,7 +251,42 @@
 				}
 			});
 			
+			obj.startExRateUpdateEvent = obj.contract.StartExRateUpdated({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.startExRateUpdateEvent.watch(function(error, result) {
+				if (!error) {
+					obj.callbackForUpdateStartExrate(result.args.coinId.toNumber()
+						, result.args.rate.toNumber() / 100
+						, new Date(result.args.timeStamp.toNumber() * 1000));
+				} else {
+					console.error(error);
+				}
+			});
+			
+			obj.endExRateUpdateEvent = obj.contract.EndExRateUpdated({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.endExRateUpdateEvent.watch(function(error, result) {
+				if (!error) {
+					obj.callbackForUpdateEndExrate(result.args.coinId.toNumber()
+						, result.args.rate.toNumber() / 100
+						, new Date(result.args.timeStamp.toNumber() * 1000));
+				} else {
+					console.error(error);
+				}
+			});
+			
+			obj.gameYChoosedEvent = obj.contract.GameYChoosed({gameId: obj.id}, {fromBlock: 'latest'});
+			obj.gameYChoosedEvent.watch(function(error, result) {
+				if (!error) {
+					obj.callbackForGameYChoosed(result.args.Y.toNumber());
+				} else {
+					console.error(error);
+				}
+			});
+			
 			function openBinanceWss() {
+				if (typeof WebSocket === 'undefined') {
+					return;
+				}
+				
 				var wsUrl = "wss://stream.binance.com:9443/stream?streams=";
 				for (let i = 0; i < obj.coins.length; ++i) {
 					if (i != 0) {
@@ -204,13 +295,13 @@
 					wsUrl += obj.coins[i].name.toLowerCase() + 'usdt@miniTicker';
 				}
 				
-				var ws = new WebSocket(wsUrl);
+				obj.ws = new WebSocket(wsUrl);
 				
-				ws.onopen = function () {
+				obj.ws.onopen = function () {
 					console.log("Websocket connected to binance.");
 				}
 				
-				ws.onmessage = function(event) {
+				obj.ws.onmessage = function(event) {
 					let msg = JSON.parse(event.data);
 					for (let i = 0; i < obj.coins.length; ++i) {
 						let symbol = obj.coins[i].name.toUpperCase() + 'USDT';
@@ -221,86 +312,164 @@
 					}
 				};
 			
-				ws.onclose = function() {
+				obj.ws.onclose = function() {
 					console.log("Websocket closed on connection to binance");
-					ws.removeAllListeners();
-					ws = openBinanceWss();
+					obj.ws.onopen = null;
+					obj.ws.onmessage = null;
+					obj.ws.onerror = null;
+					obj.ws.onclose = null;
+					
+					if (obj.txFee) {
+						openBinanceWss();
+					} else {
+						delete obj.ws;
+					}
 				};
 			
-				ws.onerror = function(error) {
+				obj.ws.onerror = function(error) {
 					console.log("Websocket errro: " + error);
-					ws.removeAllListeners();
-					ws = openBinanceWss();
+					obj.ws.onopen = null;
+					obj.ws.onmessage = null;
+					obj.ws.onerror = null;
+					obj.ws.onclose = null;
+					if (obj.txFee) {
+						openBinanceWss();
+					} else {
+						delete obj.ws;
+					}
 				};
-				
-				return ws;
 			}
-			
 			
 			openBinanceWss();
-			
+			return Promise.resolve();
 		}).catch(function (error) {
-			if (obj.teamWallet) {
-				delete obj.teamWallet;
-			}
-			
-			if (obj.hiddenTimeLengthBeforeClose) {
-				delete obj.hiddenTimeLengthBeforeClose;
-			}
-			
-			if (obj.minimumBets) {
-				delete obj.minimumBets;
-			}
-			
-			if (obj.isClosed) {
-				delete obj.isClosed;
-			}
-			
-			if (obj.timeStampOfStartRate) {
-				delete obj.timeStampOfStartRate;
-			}
-			
-			if (obj.minimumDifferenceBetsForWinner) {
-				delete obj.minimumDifferenceBetsForWinner;
-			}
-			
-			if (obj.txFee) {
-				delete obj.txFee;
-			}
-			
-			if (obj.B) {
-				delete obj.B;
-			}
-			
-			if (obj.A) {
-				delete obj.A;
-			}
-			
-			if (obj.duration) {
-				delete obj.duration;
-			}
-			
-			if (obj.closeTime) {
-				delete obj.closeTime;
-			}
-			
-			if (obj.openTime) {
-				delete obj.openTime;
-			}
-			
-			if (obj.coins) {
-				delete obj.coins;
-			}
-			
+			obj.close();
 			return Promise.reject(error);
 		});
 	};
+	
+	MambaGame.prototype.close = function () {
+		if (this.openTime) {
+			delete this.openTime;
+		}
+		
+		if (this.closeTime) {
+			delete this.closeTime;
+		}
+		
+		if (this.duration) {
+			delete this.duration;
+		}
+		
+		if (this.hiddenTimeLengthBeforeClose) {
+			delete this.hiddenTimeLengthBeforeClose;
+		}
+		
+		if (this.Y) {
+			delete this.Y;
+		}
+		
+		if (this.A) {
+			delete this.A;
+		}
+		
+		if (this.B) {
+			delete this.B;
+		}
+		
+		if (this.txFee) {
+			delete this.txFee;
+		}
+		
+		if (this.minimumDifferenceBetsForWinner) {
+			delete this.minimumDifferenceBetsForWinner;
+		}
+		
+		if (this.YDistribution) {
+			delete this.YDistribution;
+		}
+		
+		if (this.coins) {
+			delete this.coins;
+		}
+		
+		if (this.winnerCoinIds) {
+			delete this.winnerCoinIds;
+		}
+		
+		if (this.state) {
+			delete this.state;
+		}
+		
+		if (this.extendEvent) {
+			this.extendEvent.stopWatching();
+			delete this.extendEvent;
+		}
+		
+		if (this.closedEvent) {
+			this.closedEvent.stopWatching();
+			delete this.closedEvent;
+		}
+			
+		if (this.waitToCloseEvent) {
+			this.waitToCloseEvent.stopWatching();
+			delete this.waitToCloseEvent;
+		}
+			
+		if (this.readyEvent) {
+			this.readyEvent.stopWatching();
+			delete this.readyEvent;
+		}
+			
+		if (this.openEvent) {
+			this.openEvent.stopWatching();
+			delete this.openEvent;
+		}
+		
+		if (this.coinBetEvent) {
+			this.coinBetEvent.stopWatching();
+			delete this.coinBetEvent;
+		}
+			
+		if (this.coinLargestBetEvent) {
+			this.coinLargestBetEvent.stopWatching();
+			delete this.coinLargestBetEvent;
+		}
+		
+		if (this.sendAwardsBetEvent) {
+			this.sendAwardsBetEvent.stopWatching();
+			delete this.sendAwardsBetEvent;
+		}
+			
+		if (this.startExRateUpdateEvent) {
+			this.startExRateUpdateEvent.stopWatching();
+			delete this.startExRateUpdateEvent;
+		}
+		
+		if (this.endExRateUpdateEvent) {
+			this.endExRateUpdateEvent.stopWatching();
+			delete this.endExRateUpdateEvent;
+		}
+		
+		if (this.gameYChoosedEvent) {
+			this.gameYChoosedEvent.stopWatching();
+			delete this.gameYChoosedEvent;
+		}
+		
+		if (this.ws) {
+			this.ws.close();
+		}
+		
+		for (let key in this.cb) {
+			this.cb[key] = null;
+		}
+	}
 	
 	MambaGame.prototype.bet = function (coinId, betsInEther) {
 		var obj;
 		obj = this;
 		
-		console.log("bet" + new Date);
+		console.log("bet " + new Date + " " + web3.eth.accounts[0]);
 		
 		return new Promise(function (resolve, reject) {
 			let now = new Date();
@@ -317,7 +486,7 @@
 				if (minBets > betsInWei) {
 					reject("Your bets amount is less than mininum bets.");
 				} else {
-					obj.contract.bet(obj.id, coinId, {value: betsInWei}, function(error, result) {
+					obj.contract.bet(obj.id, coinId, {value: betsInWei, from: web3.eth.accounts[0]}, function(error, result) {
 						if (error) {
 							reject(error);
 						} else {
@@ -349,71 +518,82 @@
 		}
 	}
 	
-	MambaGame.prototype.callbackForExtended = function () {
-		this.closeTime = new Date(this.closeTime.getTime() + this.duration);
-		var closeTime = this.closeTime;
-		console.log(closeTime);
-		if (this.cb['Extended']) {
-			this.cb['Extended'](closeTime);
-		}
-	}
-	
-	MambaGame.prototype.callbackForClosed = function () {
-		this.isClosed = true;
+	MambaGame.prototype.callbackForStateChanged = function (state) {
+		this.state = state;
 		
 		var obj;
 		obj = this;
 		
-		new Promise(function (resolve, reject) {
-			obj.contract.gameData(obj.id, function (error, result) {
-				if (error) {
-					reject(error);
-				} else {
-					obj.timeStampOfEndRate = new Date(1000 * result[10].toNumber());			
-					obj.isClosed = true;
-					resolve();
-				}
-			});
-		}).then(function () {
-			return new Promise(function (resolve, reject) {
-				obj.contract.getGameCoinData(obj.id, function (error, result) {
-					if (error) {
-						reject(error);
-					} else {
-						for (let i = 0; i < 5; ++i) {
-							obj.coins[i].endExRate = result[6][i].toNumber() / 100;
+		if ('Closed' == state) {	
+			let promise = [];
+			for (let i = 0; i < 5; ++i) {
+				promises.push(new Promise(function (resolve, reject) {
+					obj.contract.gameBetData(obj.id, i, function (error, result) {
+						if (error) {
+							reject(error);
+						} else {
+							obj.coins[i].totalBets = web3.fromWei(result[0].toString(), 'ether');
+							obj.coins[i].largestBets = web3.fromWei(result[1].toString(), 'ether');
+							obj.coins[i].numberOfBets = result[2].toNumber();
 						}
-						resolve();
-					}
+					});
+				}));
+			}
+			
+			Promise.all(promises).then(function () {
+				return new Promise(function (resolve, reject) {
+					obj.contract.gameNumberOfWinnerCoinIds(obj.id, function (error, result) {
+						if (error) {
+							reject(error);
+						} else {
+							resolve(result.toNumber());
+						}
+					});
 				});
-			});
-		}).then(function (numberOfWinnerCoinIds) {
-			if (0 == numberOfWinnerCoinIds) {
-				return Promise.resolve();
-			} else {
-				let promises = [];
-				for (let i = 0; i < numberOfWinnerCoinIds; ++i) {
-					promises.push(new Promise(function (resolve, reject) {
-						obj.contract.getWinnerCoinIds(obj.id, i, function(error, result) {
-							if (error) {
-								reject(error);
-							} else {
-								resolve(result.toNumber());
-							}
-						});
-					}));
-				}
-				
-				return Promise.all(promises).then(function (values) {
-					obj.winnerCoinIds = values;
+			}).then(function (numberOfWinnerCoinIds) {
+				if (0 == numberOfWinnerCoinIds) {
 					return Promise.resolve();
-				});
+				} else {
+					let promises = [];
+					for (let i = 0; i < numberOfWinnerCoinIds; ++i) {
+						promises.push(new Promise(function (resolve, reject) {
+							obj.contract.gameWinnerCoinIds(obj.id, i, function(error, result) {
+								if (error) {
+									reject(error);
+								} else {
+									resolve(result.toNumber());
+								}
+							});
+						}));
+					}
+				
+					return Promise.all(promises).then(function (values) {
+						obj.winnerCoinIds = values;
+						return Promise.resolve();
+					});
+				}
+			}).then(function () {
+				if (obj.cb['StateChanged']) {
+					obj.cb['StateChanged'](state);
+				}
+			}).catch(console.error);
+		} else {
+			
+			if ('Ready' == state) {
+				setTimeout(function () {
+					obj.callbackForStateChanged('Open');
+				}, this.openTime.getTime() - Date.now());
+			} else if ('Open' == state) {
+				setTimeout(function () {
+					obj.callbackForStateChanged('Stop');
+				}, this.closeTime.getTime() - Date.now());
 			}
-		}).then(function () {
-			if (obj.cb['Closed']) {
-				obj.cb['Closed']();
+			
+			if (this.cb['StateChanged']) {
+				this.cb['StateChanged'](state);
 			}
-		}).catch(console.error);
+		}
+		
 	}
 	
 	MambaGame.prototype.callbackForCoinBet = function (id, player, bets) {
@@ -451,35 +631,64 @@
 		}
 	}
 	
+	MambaGame.prototype.callbackForUpdateStartExrate = function (coinId, price, timeStamp) {
+		this.coins[coinId].startExRate = price;
+		this.coins[coinId].timeStampOfStartExRate = timeStamp;
+		if (this.cb['StartExRateUpdated']) {
+			this.cb['StartExRateUpdated'](coinId, price, timeStamp);
+		}
+	}
+	
+	MambaGame.prototype.callbackForUpdateEndExrate = function (coinId, price, timeStamp) {
+		this.coins[coinId].endExRate = price;
+		this.coins[coinId].timeStampOfEndExRate = timeStamp;
+		if (this.cb['EndExRateUpdated']) {
+			this.cb['EndExRateUpdated'](coinId, price, timeStamp);
+		}
+	}
+	
+	MambaGame.prototype.callbackForGameYChoosed = function (Y) {
+		this.Y = Y;
+		if (this.cb['GameYChoosed']) {
+			this.cb['GameYChoosed'](Y);
+		}
+	}
+	
 	// Mamba game manager definition.
-	var mambaGameManager = {
+	var mambaGamePool = {
 		isInited: false
-		, abi: [{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"getGameBetData","outputs":[{"name":"totalBets","type":"uint256"},{"name":"largestBets","type":"uint256"},{"name":"numberOfBets","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"isBetInformationHidden","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_openTime","type":"uint256"},{"name":"_gameDuration","type":"uint256"},{"name":"_coinName0","type":"string"},{"name":"_coinName1","type":"string"},{"name":"_coinName2","type":"string"},{"name":"_coinName3","type":"string"},{"name":"_coinName4","type":"string"},{"name":"_startExRate","type":"int32[5]"},{"name":"_exRateTimeStamp","type":"uint256"},{"name":"_YDistribution","type":"uint8[50]"},{"name":"_A","type":"uint8"},{"name":"_B","type":"uint8"},{"name":"_txFee","type":"uint16"},{"name":"_minDiffBets","type":"uint256"}],"name":"createNewGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"HIDDEN_TIME_BEFORE_CLOSE","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"getNumberOfWinnerCoinIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"teamWallet","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"MIN_BET","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"bet","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[],"name":"renounceOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"getGameCoinData","outputs":[{"name":"coinName0","type":"string"},{"name":"coinName1","type":"string"},{"name":"coinName2","type":"string"},{"name":"coinName3","type":"string"},{"name":"coinName4","type":"string"},{"name":"startExRate","type":"int32[5]"},{"name":"endExRate","type":"int32[5]"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"isOwner","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_winnerId","type":"uint256"}],"name":"getWinnerCoinIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"gameData","outputs":[{"name":"id","type":"uint256"},{"name":"openTime","type":"uint256"},{"name":"closeTime","type":"uint256"},{"name":"gameDuration","type":"uint256"},{"name":"Y","type":"uint8"},{"name":"A","type":"uint8"},{"name":"B","type":"uint8"},{"name":"txFee","type":"uint16"},{"name":"minDiffBets","type":"uint256"},{"name":"timeStampOfStartRate","type":"uint256"},{"name":"timeStampOfEndRate","type":"uint256"},{"name":"isClosed","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_endExRate","type":"int32[5]"},{"name":"_timeStampOfEndRate","type":"uint256"}],"name":"close","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"getGameYDistribution","outputs":[{"name":"","type":"uint8[50]"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"numberOfGameData","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"_teamWallet","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"Closed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"Extended","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":true,"name":"coinId","type":"uint256"},{"indexed":false,"name":"player","type":"address"},{"indexed":false,"name":"bets","type":"uint256"}],"name":"CoinBet","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":true,"name":"coinId","type":"uint256"},{"indexed":false,"name":"bets","type":"uint256"}],"name":"CoinLargestBet","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"player","type":"address"},{"indexed":false,"name":"awards","type":"uint256"}],"name":"SendAwards","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"teamWallet","type":"address"},{"indexed":false,"name":"awards","type":"uint256"}],"name":"SendRemainAwards","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"gameId","type":"uint256"},{"indexed":false,"name":"openTime","type":"uint256"}],"name":"GameCreated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"}],"name":"OwnershipRenounced","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"},{"indexed":true,"name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"}]
-		, address: '0xce68bb77cba4b493b5e215429a5b318d012cc0fc'
+		, abi: [{"constant":true,"inputs":[],"name":"txFeeReceiver","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"close","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"games","outputs":[{"name":"id","type":"uint256"},{"name":"openTime","type":"uint256"},{"name":"closeTime","type":"uint256"},{"name":"duration","type":"uint256"},{"name":"hiddenTimeBeforeClose","type":"uint256"},{"name":"Y","type":"uint8"},{"name":"A","type":"uint8"},{"name":"B","type":"uint8"},{"name":"txFee","type":"uint16"},{"name":"isFinished","type":"bool"},{"name":"isYChoosed","type":"bool"},{"name":"minDiffBets","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"isBetInformationHidden","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"bytes32"},{"name":"_result","type":"string"}],"name":"__callback","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_openTime","type":"uint256"},{"name":"_duration","type":"uint256"},{"name":"_coinName0","type":"string"},{"name":"_coinName1","type":"string"},{"name":"_coinName2","type":"string"},{"name":"_coinName3","type":"string"},{"name":"_coinName4","type":"string"},{"name":"_YDistribution","type":"uint8[50]"},{"name":"_A","type":"uint8"},{"name":"_B","type":"uint8"},{"name":"_txFee","type":"uint16"},{"name":"_minDiffBets","type":"uint256"}],"name":"createNewGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"myid","type":"bytes32"},{"name":"result","type":"string"},{"name":"proof","type":"bytes"}],"name":"__callback","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"fetchExRate","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":true,"inputs":[],"name":"HIDDEN_TIME_BEFORE_CLOSE","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"oraclizeFee","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameState","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"withdrawOraclizeFee","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"fetchStartRate","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"MIN_BET","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameYDistribution","outputs":[{"name":"","type":"uint8[50]"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"bet","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[],"name":"renounceOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"gameBetData","outputs":[{"name":"totalBets","type":"uint256"},{"name":"largestBets","type":"uint256"},{"name":"numberOfBets","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"bytes32"}],"name":"queryRecords","outputs":[{"name":"recordType","type":"uint8"},{"name":"gameId","type":"uint256"},{"name":"arg","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"isOwner","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"gameCoinData","outputs":[{"name":"name","type":"string"},{"name":"startExRate","type":"int32"},{"name":"timeStampOfStartExRate","type":"uint256"},{"name":"endExRate","type":"int32"},{"name":"timeStampOfEndExRate","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"getAwards","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"ORICALIZE_GAS_LIMIT","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"closeErrorGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameNumberOfWinnerCoinIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_winnerId","type":"uint256"}],"name":"gameWinnerCoinIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"calculateAwardAmount","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"sendOraclizeFee","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"numberOfGames","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"_txFeeReceiver","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"payable":true,"stateMutability":"payable","type":"fallback"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"rate","type":"int32"},{"indexed":false,"name":"timeStamp","type":"uint256"}],"name":"StartExRateUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"rate","type":"int32"},{"indexed":false,"name":"timeStamp","type":"uint256"}],"name":"EndExRateUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"Y","type":"uint8"}],"name":"GameYChoosed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"message","type":"string"}],"name":"Log","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"addr","type":"address"}],"name":"LogAddr","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"player","type":"address"},{"indexed":false,"name":"amount","type":"uint256"}],"name":"CoinBet","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"amount","type":"uint256"}],"name":"CoinLargestBetChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"player","type":"address"},{"indexed":false,"name":"awards","type":"uint256"}],"name":"SendAwards","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"received","type":"uint256"}],"name":"OraclizeFeeReceived","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"used","type":"uint256"}],"name":"OraclizeFeeUsed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"queryId","type":"bytes32"}],"name":"SentOraclizeQuery","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"gameId","type":"uint256"}],"name":"GameCreated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameClosed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameExtended","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameWaitToClose","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameReady","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameOpened","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"}],"name":"OwnershipRenounced","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"},{"indexed":true,"name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"}]
+		, address: '0xbad7d74c4de6837de976e8c1f434677191f4fa58'
 		, init: function () {
 			let promise = null;
-			if (window.ethereum) {
-				window.web3 = new Web3(ethereum);
-				promise = ethereum.enable();
-			} else if (window.web3) {
-				if (web3.eth.accounts.length == 0) {
-					promise = Promise.reject("MetaMask is locked or no available accounts.");
+			if (typeof window != 'undefined') {
+				if (window.ethereum) {
+					window.web3 = new Web3(ethereum);
+					promise = ethereum.enable();
+				} else if (window.web3) {
+					if (web3.eth.accounts.length == 0) {
+						promise = Promise.reject("MetaMask is locked or no available accounts.");
+					} else {
+						promise = Promise.resolve();
+					}
 				} else {
-					promise = Promise.resolve();
+					promise = Promise.reject('Non-Ethereum browser detected. You should consider trying MetaMask!');
 				}
+			} else if (web3) {
+				promise = Promise.resolve();
 			} else {
-				promise = Promise.reject('Non-Ethereum browser detected. You should consider trying MetaMask!');
+				promise = Promise.reject('No injected web3 detected.');
 			}
 			
 			return promise.then(function () {
-				var Contract = web3.eth.contract(mambaGameManager.abi);
-				mambaGameManager.contract = Contract.at(mambaGameManager.address);
+				var Contract = web3.eth.contract(mambaGamePool.abi);
+				mambaGamePool.contract = Contract.at(mambaGamePool.address);
 				return Promise.resolve();
 			}).then(function () {
 				return new Promise(function (resolve, reject) {
 					web3.eth.getBlockNumber(function (error, result) {
 						if (!error) {
-							mambaGameManager.initBlockNumber = result;
+							mambaGamePool.initBlockNumber = result;
 							resolve();
 						} else {
 							reject(error);
@@ -488,56 +697,45 @@
 				});
 			}).then(function () {
 				return new Promise(function (resolve, reject) {
-					mambaGameManager.contract.teamWallet(function(error, result) {
+					mambaGamePool.contract.txFeeReceiver(function(error, result) {
 						if (error) {
 							reject(error);
 						} else {
-							mambaGameManager.teamWallet = result;
+							mambaGamePool.txFeeReceiver = result;
 							resolve();
 						}
 					});
 				});
 			}).then(function () {
 				return new Promise(function (resolve, reject) {
-					mambaGameManager.contract.numberOfGameData(function(error, result) {
+					mambaGamePool.contract.numberOfGames(function(error, result) {
 						if (error) {
 							reject(error);
 						} else {
-							mambaGameManager.numberOfGames = result.toNumber();
+							mambaGamePool.numberOfGames = result.toNumber();
 							resolve();
 						}
 					});
 				});
 			}).then(function () {
 				return new Promise(function (resolve, reject) {
-					mambaGameManager.contract.MIN_BET(function(error, result) {
+					mambaGamePool.contract.MIN_BET(function(error, result) {
 						if (error) {
 							reject(error);
 						} else {
-							mambaGameManager.minimumBets = web3.fromWei(result.toString(), 'ether');
+							mambaGamePool.minimumBets = web3.fromWei(result.toString(), 'ether');
 							resolve();
 						}
 					});
 				});
 			}).then(function () {
-				return new Promise(function (resolve, reject) {
-					mambaGameManager.contract.HIDDEN_TIME_BEFORE_CLOSE(function(error, result) {
-						if (error) {
-							reject(error);
-						} else {
-							mambaGameManager.hiddenTimeLengthBeforeClose = 1000 * result.toNumber();
-							resolve();
-						}
-					});
-				});
-			}).then(function () {
-				let gameAddedEvent = mambaGameManager.contract.GameCreated({}, {fromBlock: 'latest'});
-				gameAddedEvent.watch(function(error, result) {
+				mambaGamePool.gameAddedEvent = mambaGamePool.contract.GameCreated({}, {fromBlock: 'latest'});
+				mambaGamePool.gameAddedEvent.watch(function(error, result) {
 					if (!error) {
-						if (result.blockNumber > mambaGameManager.initBlockNumber) {
-							++mambaGameManager.numberOfGames;
-							if (mambaGameManager.callbackFnForNewGame) {
-								mambaGameManager.callbackFnForNewGame(mambaGameManager.numberOfGames);
+						if (result.blockNumber > mambaGamePool.initBlockNumber) {
+							mambaGamePool.numberOfGames = result.args.gameId.toNumber() + 1;
+							if (mambaGamePool.callbackFnForNewGame) {
+								mambaGamePool.callbackFnForNewGame(mambaGamePool.numberOfGames);
 							}
 						}
 					} else {
@@ -548,36 +746,43 @@
 				return Promise.resolve();
 			
 			}).then(function () {
-				mambaGameManager.isInited = true;
+				mambaGamePool.isInited = true;
 				return Promise.resolve();
 			}).catch(function (error) {
-				mambaGameManager.isInited = false;
-				if (mambaGameManager.numberOfGames) {
-					delete mambaGameManager.numberOfGames;
-				}
-				
-				if (mambaGameManager.teamWallet) {
-					delete mambaGameManager.teamWallet;
-				}
-				
-				if (mambaGameManager.contract) {
-					delete mambaGameManager.contract;
-				}
-				
-				if (mambaGameManager.initBlockNumber) {
-					delete mambaGameManager.initBlockNumber;
-				}
-				
-				if (mambaGameManager.minimumBets) {
-					delete mambaGameManager.minimumBets;
-				}
-				
-				if (mambaGameManager.hiddenTimeLengthBeforeClose) {
-					delete mambaGameManager.hiddenTimeLengthBeforeClose;
-				}
-				
+				mambaGamePool.close();
 				return Promise.reject(error);
 			});
+		}
+		, close: function() {
+			mambaGamePool.isInited = false;
+			if (mambaGamePool.numberOfGames) {
+				delete mambaGamePool.numberOfGames;
+			}
+			
+			if (mambaGamePool.txFeeReceiver) {
+				delete mambaGamePool.txFeeReceiver;
+			}
+			
+			if (mambaGamePool.contract) {
+				delete mambaGamePool.contract;
+			}
+			
+			if (mambaGamePool.initBlockNumber) {
+				delete mambaGamePool.initBlockNumber;
+			}
+			
+			if (mambaGamePool.minimumBets) {
+				delete mambaGamePool.minimumBets;
+			}
+			
+			if (mambaGamePool.gameAddedEvent) {
+				mambaGamePool.gameAddedEvent.stopWatching();
+				delete mambaGamePool.gameAddedEvent;
+			}
+			
+			if (mambaGamePool.callbackFnForNewGame) {
+				mambaGamePool.callbackFnForNewGame = null;
+			}
 		}
 		, game: function(id) {
 			
@@ -588,7 +793,7 @@
 			} else {
 				var game = new MambaGame(id);
 				if (!game.initBlockNumber) {
-					game.initBlockNumber = mambaGameManager.initBlockNumber;
+					game.initBlockNumber = mambaGamePool.initBlockNumber;
 				}
 				
 				if (!game.contract) {
@@ -599,12 +804,8 @@
 					game.minimumBets = this.minimumBets;
 				}
 				
-				if (!game.hiddenTimeLengthBeforeClose) {
-					game.hiddenTimeLengthBeforeClose = this.hiddenTimeLengthBeforeClose;
-				}
-				
-				if (!game.teamWallet) {
-					game.teamWallet = this.teamWallet;
+				if (!game.txFeeReceiver) {
+					game.txFeeReceiver = this.txFeeReceiver;
 				}
 				
 				return game.fetchConstantValue().then(function () {
@@ -625,5 +826,5 @@
 		}
 	}
 	
-	return mambaGameManager;
+	return mambaGamePool;
 }))

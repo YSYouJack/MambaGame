@@ -7,7 +7,7 @@ module.exports = function(deployer, network, accounts) {
 	if (network == "development") {
 		deployer.deploy(GameLogic);
 		deployer.link(GameLogic, GamePoolTestProxy);
-		deployer.deploy(GamePoolTestProxy, accounts[0], {overwrite: true});
+		deployer.deploy(GamePoolTestProxy, accounts[0]);
 	} else {
 		deployer.deploy(GameLogic, {overwrite: false});
 		deployer.link(GameLogic, GamePool);

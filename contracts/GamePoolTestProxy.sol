@@ -19,6 +19,12 @@ contract GamePoolTestProxy is GamePool {
 	        game.coins[i].startExRate = _rates[i];
 	        game.coins[i].timeStampOfStartExRate = now;
 	    }
+	    
+	    if (GameLogic.state(game) == GameLogic.State.Ready) {
+	        emit GameReady(_gameId);
+	    } else if (GameLogic.state(game) == GameLogic.State.Open) {
+	        emit GameOpened(_gameId);
+	    }
     }
     
     function setEndExRate(uint256 _gameId, int32[5] _rates) 
@@ -30,6 +36,10 @@ contract GamePoolTestProxy is GamePool {
 	    for (uint256 i = 0; i < 5; ++i) {
 	        game.coins[i].endExRate = _rates[i];
 	        game.coins[i].timeStampOfEndExRate = now;
+	    }
+	    
+	    if (GameLogic.state(game) == GameLogic.State.WaitToClose) {
+	        emit GameWaitToClose(_gameId);
 	    }
     }
     
@@ -61,6 +71,10 @@ contract GamePoolTestProxy is GamePool {
 	    GameLogic.Instance storage game = games[_gameId];
 	    game.Y = _Y;
 	    game.isYChoosed = true;
+	    
+	    if (GameLogic.state(game) == GameLogic.State.WaitToClose) {
+	        emit GameWaitToClose(_gameId);
+	    }
     }
     
     function close(uint256 _gameId) 
