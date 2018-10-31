@@ -5,7 +5,7 @@ import "../third-contracts/openzeppelin-solidity/contracts/math/SafeMath.sol";
 library GameLogic {
     using SafeMath for uint256;
     
-    enum State { Created, Ready, Open, Stop, WaitToClose, Closed, Error }
+    enum State { NotExists, Created, Ready, Open, Stop, WaitToClose, Closed, Error}
     
     struct Bets {
         uint256 betAmount;
@@ -58,8 +58,6 @@ library GameLogic {
 	
 	struct GameBets {
 	    CoinBets[5] coinbets;
-	    uint256 awardAmount;
-	    uint256 transferedAwardAmount;
 	    mapping (address => bool) isAwardTransfered;
 	}
 	
@@ -106,7 +104,10 @@ library GameLogic {
 	    }
 	}
 	
-	function tryClose(Instance storage game, GameBets storage bets)
+	function tryClose(Instance storage game
+	    , GameBets storage bets
+	    , uint256 awardAmount
+	)
 	    public 
 	    returns (bool) 
 	{
@@ -298,16 +299,16 @@ library GameLogic {
 		}
 		
 		if (game.isFinished) {
-		    calculateAwardForCoin(game, bets);
+		    calculateAwardForCoin(game, bets, awardAmount);
 		}
 		
 		return game.isFinished;
 	}
 	
-	function closeErrorGame(Instance storage game, GameBets storage gameBets)
+	function closeErrorGame(Instance storage game)
 	    public 
 	{
-        require(state(game) == State.Error && 0 == gameBets.awardAmount);
+        require(state(game) == State.Error);
         game.isFinished = true;
 	}
 	
@@ -328,7 +329,6 @@ library GameLogic {
 	    b.betAmount = msg.value.sub(txFeeAmount);
 	    
 	    c.totalBetAmount = b.betAmount.add(c.totalBetAmount);
-	    gameBets.awardAmount = b.betAmount.add(gameBets.awardAmount);
 	    b.totalBetAmountByFar = c.totalBetAmount;
 	    
 	    c.playerBetMap[msg.sender].push(c.bets.length - 1);
@@ -358,11 +358,15 @@ library GameLogic {
 	        && now.add(game.hiddenTimeBeforeClose) > game.closeTime;
     }
     
-    function calculateAwardForCoin(Instance storage game, GameBets storage bets) 
+    function calculateAwardForCoin(Instance storage game
+        , GameBets storage bets
+        , uint256 awardAmount
+    ) 
         public
     {
         require(state(game) == State.Closed);
-        uint256 awardAmount = bets.awardAmount.div(game.winnerCoinIds.length);
+        
+        awardAmount = awardAmount.div(game.winnerCoinIds.length);
         
         for (uint256 i = 0; i < game.winnerCoinIds.length; ++i) {
 	        CoinBets storage c = bets.coinbets[game.winnerCoinIds[i]];

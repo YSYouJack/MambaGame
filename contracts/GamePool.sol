@@ -224,14 +224,21 @@ contract GamePool is Ownable, usingOraclize {
     }
     
     function gameState(uint256 _gameId) public view returns (GameLogic.State) {
-        require(_gameId < games.length);
-        return GameLogic.state(games[_gameId]);
+        if (_gameId < games.length) {
+            return GameLogic.state(games[_gameId]);
+        } else {
+            return GameLogic.State.NotExists;
+        }
     }
     
     function isBetInformationHidden(uint256 _gameId) public view returns (bool) {
         require(_gameId < games.length);
         return GameLogic.isBetInformationHidden(games[_gameId]);
     }
+    
+    function gameAwardAmount() public view returns (uint256) {
+        return address(this).balance.sub(oraclizeFee);
+    } 
     
     function bet(uint256 _gameId, uint256 _coinId) public payable {
 	    require(msg.value >= MIN_BET);
@@ -306,7 +313,7 @@ contract GamePool is Ownable, usingOraclize {
 		
 		GameLogic.GameBets storage bets = gameBets[_gameId];
 		
-		GameLogic.tryClose(game, bets);
+		GameLogic.tryClose(game, bets, gameAwardAmount());
 		
 		if (game.isFinished) {
 		    emit GameClosed(_gameId);
@@ -334,40 +341,38 @@ contract GamePool is Ownable, usingOraclize {
 	    require(_gameId < games.length);
 	    require(_gameId < gameBets.length);
 	    
-	    GameLogic.Instance storage game = games[_gameId];
-		GameLogic.GameBets storage bets = gameBets[_gameId];
+	    GameLogic.State queryGameState = gameState(_gameId);
+	    GameLogic.State nextGameState = gameState(_gameId.add(1));
+	    
+	    if (GameLogic.State.Closed == queryGameState && GameLogic.State.Open > nextGameState) {
+	        GameLogic.Instance storage game = games[_gameId];
+		    GameLogic.GameBets storage bets = gameBets[_gameId];
 		
-		return GameLogic.calculateAwardAmount(game, bets);
+		    return GameLogic.calculateAwardAmount(game, bets);
+	    } else {
+	        return 0;
+	    }
 	}
 	
 	function getAwards(uint256 _gameId) public {
-	    require(_gameId < games.length);
-	    require(_gameId < gameBets.length);
-	    
-	    GameLogic.Instance storage game = games[_gameId];
-		GameLogic.GameBets storage bets = gameBets[_gameId];
-		
-		uint256 amount = GameLogic.calculateAwardAmount(game, bets);
+	    uint256 amount = calculateAwardAmount(_gameId);
 		if (0 < amount) {
-		    require(bets.awardAmount.sub(bets.transferedAwardAmount) >= amount);
-		    require(address(this).balance >= amount);
+		    require(gameAwardAmount() >= amount);
 		    
 		    msg.sender.transfer(amount);
-		    bets.transferedAwardAmount = bets.transferedAwardAmount.add(amount);
+		    
+		    GameLogic.GameBets storage bets = gameBets[_gameId];
 		    bets.isAwardTransfered[msg.sender] = true;
+		    
 		    emit SendAwards(_gameId, msg.sender, amount);
 		}
 	}
 	
-	function closeErrorGame(uint256 _gameId)
-	    public 
-	{
+	function closeErrorGame(uint256 _gameId) public {
         require(_gameId < games.length);
-	    require(_gameId < gameBets.length);
 	    
 	    GameLogic.Instance storage game = games[_gameId];
-		GameLogic.GameBets storage bets = gameBets[_gameId];
-		GameLogic.closeErrorGame(game, bets);
+	    GameLogic.closeErrorGame(game);
 		
 		emit GameClosed(_gameId);
 	}

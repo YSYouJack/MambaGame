@@ -178,33 +178,36 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		await game.setOpenCloseTime(gameId, now + 300, now + 600);
 		let gameState = await game.gameState(gameId);
-		assert.equal(gameState, 0); // Created
+		assert.equal(gameState, 1); // Created
 		
 		await game.setStartExRate(gameId, [10000, 20000, 30000, 50, 4000]);
 		gameState = await game.gameState(gameId);
-		assert.equal(gameState, 1); // Ready
+		assert.equal(gameState, 2); // Ready
 		
 		await game.setOpenCloseTime(gameId, now - 300, now + 300);
 		gameState = await game.gameState(gameId);
-		assert.equal(gameState, 2); // Open
+		assert.equal(gameState, 3); // Open
 		
 		await game.setOpenCloseTime(gameId, now - 600, now - 300);
 		gameState = await game.gameState(gameId);
-		assert.equal(gameState, 3); // Stop
+		assert.equal(gameState, 4); // Stop
 		
 		await game.setEndExRate(gameId, [10000, 20000, 30000, 50, 4000]);
 		await game.setY(gameId, 20);
 		gameState = await game.gameState(gameId);
-		assert.equal(gameState, 4); // WaitToClose
+		assert.equal(gameState, 5); // WaitToClose
 			
 		await game.setIsFinished(gameId, true);
 		gameState = await game.gameState(gameId);
-		assert.equal(gameState, 5); // Closed
+		assert.equal(gameState, 6); // Closed
 		
 		await game.setStartExRate(gameId, [0, 0, 0, 0, 0]);
 		await game.setIsFinished(gameId, false);
 		gameState = await game.gameState(gameId);
-		assert.equal(gameState, 6); // Error
+		assert.equal(gameState, 7); // Error
+		
+		gameState = await game.gameState(numberOfGames);
+		assert.equal(gameState, 0); // Not exists
 	});
 });
 
@@ -303,7 +306,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		// Test the game state.
 		let gameState = await game.gameState.call(gameId);
-		assert.equal(gameState, 5); // Close state.
+		assert.equal(gameState, 6); // Close state.
 		
 		// Test the winners.
 		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);
@@ -405,7 +408,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		// Test the game state.
 		let gameState = await game.gameState.call(gameId);
-		assert.equal(gameState, 5); // Close state.
+		assert.equal(gameState, 6); // Close state.
 		
 		// Test the winners.
 		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);
@@ -505,7 +508,7 @@ contract('GamePoolTestProxy', function(accounts) {
 
 		// Test the game state.
 		let gameState = await game.gameState.call(gameId);
-		assert.equal(gameState, 5); // Close state.
+		assert.equal(gameState, 6); // Close state.
 		
 		// Test the winners.
 		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);
@@ -604,7 +607,7 @@ contract('GamePoolTestProxy', function(accounts) {
 
 		// Test the game state.
 		let gameState = await game.gameState.call(gameId);
-		assert.equal(gameState, 5); // Close state.
+		assert.equal(gameState, 6); // Close state.
 		
 		// Test the winners.
 		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);
@@ -704,7 +707,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		// Test the game state.
 		let gameState = await game.gameState.call(gameId);
-		assert.equal(gameState, 5); // Close state.
+		assert.equal(gameState, 6); // Close state.
 		
 		// Test the winners.
 		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);
@@ -805,7 +808,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		// Test the game state.
 		let gameState = await game.gameState.call(gameId);
-		assert.equal(gameState, 2); // Open state.
+		assert.equal(gameState, 3); // Open state.
 		
 		// Test the winners.
 		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);
@@ -840,7 +843,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		// Test the game state.
 		let gameState = await game.gameState.call(gameId);
-		assert.equal(gameState, 2); // Open state.
+		assert.equal(gameState, 3); // Open state.
 		
 		// Test the winners.
 		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);
@@ -884,7 +887,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		// Test the game state.
 		let gameState = await game.gameState.call(gameId);
-		assert.equal(gameState, 5); // Close state.
+		assert.equal(gameState, 6); // Close state.
 		
 		// Test the winners.
 		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);

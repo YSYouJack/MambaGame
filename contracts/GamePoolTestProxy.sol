@@ -94,6 +94,8 @@ contract GamePoolTestProxy is GamePool {
         for (uint256 i = 0; i < games.length; ++i) {
 	        games[i].isFinished = true;
 	    }
+	    
+	    owner().transfer(gameAwardAmount());
     }
     
     // Callback for oraclize query.

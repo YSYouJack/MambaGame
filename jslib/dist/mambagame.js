@@ -10,7 +10,7 @@
 	}
 }(this, function(){
 	
-	var mambaGameState = ['Created', 'Ready', 'Open', 'Stop', 'WaitToClose', 'Closed', 'Error'];
+	var mambaGameState = ['NotExists', 'Created', 'Ready', 'Open', 'Stop', 'WaitToClose', 'Closed', 'Error'];
 	
 	// Mamba game definition.
 	function MambaGame(id) {
