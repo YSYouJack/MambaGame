@@ -498,6 +498,36 @@
 		});
 	}
 	
+	MambaGame.prototype.calculateAwards = function () {
+		var obj;
+		obj = this;
+		
+		return new Promise(function (resolve, reject) {
+			obj.contract.calculateAwardAmount.call(obj.id, {from: web3.eth.accounts[0]}, function (error, result) {
+				if (error) {
+					reject(error);
+				} else {
+					resolve(web3.fromWei(result.toString(), 'ether'));
+				}
+			});
+		});
+	}
+	
+	MambaGame.prototype.getAwards = function () {
+		var obj;
+		obj = this;
+		
+		return new Promise(function (resolve, reject) {
+			obj.contract.getAwards.call(obj.id, {from: web3.eth.accounts[0]}, function (error, result) {
+				if (error) {
+					reject(error);
+				} else {
+					resolve();
+				}
+			});
+		});
+	}
+	
 	MambaGame.prototype.subscribe = function (eventType, callbackFn) {
 		if (eventType in this.cb) {
 			if (!this.cb[eventType]) {
@@ -579,14 +609,33 @@
 			}).catch(console.error);
 		} else {
 			
+			function checkTheGameSateAndCallbackIfOk(state, retryCnt = 0) {
+				obj.contract.gameState(obj.id, function (error, result) {
+					if (!error && state === mambaGameState[result.toNumber()]) {
+						obj.callbackForStateChanged(state);
+					} else {
+						if (retryCnt < 20) {
+							setTimeout(checkTheGameSateAndCallbackIfOk(state, retryCnt + 1)
+								, 5000);
+						} else {
+							if (error) {
+								console.error("Query the game state error: " + error.message);
+							} else {
+								console.error("Query the game state error");
+							}
+						}
+					}
+				});
+			}
+			
 			if ('Ready' == state) {
 				setTimeout(function () {
-					obj.callbackForStateChanged('Open');
-				}, this.openTime.getTime() - Date.now());
+					checkTheGameSateAndCallbackIfOk('Open');
+				}, this.openTime.getTime() - Date.now() + 2000);
 			} else if ('Open' == state) {
 				setTimeout(function () {
-					obj.callbackForStateChanged('Stop');
-				}, this.closeTime.getTime() - Date.now());
+					checkTheGameSateAndCallbackIfOk('Stop');
+				}, this.closeTime.getTime() - Date.now() + 2000);
 			}
 			
 			if (this.cb['StateChanged']) {
@@ -746,6 +795,7 @@
 				return Promise.resolve();
 			
 			}).then(function () {
+				mambaGamePool.playerAddress = web3.eth.accounts[0];
 				mambaGamePool.isInited = true;
 				return Promise.resolve();
 			}).catch(function (error) {
@@ -753,6 +803,7 @@
 				return Promise.reject(error);
 			});
 		}
+		
 		, close: function() {
 			mambaGamePool.isInited = false;
 			if (mambaGamePool.numberOfGames) {
@@ -778,6 +829,10 @@
 			if (mambaGamePool.gameAddedEvent) {
 				mambaGamePool.gameAddedEvent.stopWatching();
 				delete mambaGamePool.gameAddedEvent;
+			}
+			
+			if (mambaGamePool.playerAddress) {
+				mambaGamePool.playerAddress = null;
 			}
 			
 			if (mambaGamePool.callbackFnForNewGame) {

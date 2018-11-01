@@ -77,18 +77,26 @@ window.addEventListener('load', function () {
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
 						}
-					} else if (state == 'Ready') {
+					} else if (state === 'Ready') {
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
 							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
 						}
-					} else if (state == 'WaitToClose') {
+					} else if (state === 'WaitToClose') {
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
 						}
 						document.getElementById("game-y").innerHTML = game.Y;
+					} else if (state === 'Close') {
+						game.calculateAwards().then(function (awards) {
+							document.getElementById("unclaimed-awards").innerHTML = awards;
+						}).catch(function (error) {
+							console.error(error);
+							alert(error.message);
+						});
 					}
+					
 					document.getElementById("game-state").innerHTML = state;
 					document.getElementById("game-event").innerHTML += '"StateChanged" ' + state + ' ' + new Date() + '</br>';
 				});
@@ -106,6 +114,14 @@ window.addEventListener('load', function () {
 				
 				game.subscribe('SendAwards', function (playerAddress, awards) {
 					document.getElementById("game-event").innerHTML += '"SendAwards", ' + awards + ' ether to ' + playerAddress + '. ' + new Date() + '</br>';
+					if (playerAddress == mambaGamePool.playerAddress) {
+						game.calculateAwards().then(function (awards) {
+							document.getElementById("unclaimed-awards").innerHTML = awards;
+						}).catch(function (error) {
+							console.error(error);
+							alert(error.message);
+						});
+					}
 				});
 				
 				game.subscribe('ExrateUpdated', function (coinId, exrate) {
@@ -113,6 +129,13 @@ window.addEventListener('load', function () {
 				});
 				
 				document.getElementById("bet-form-submit-btn").disabled = false;
+				
+				return game.calculateAwards();
+			}).then(function (awards) {
+				document.getElementById("unclaimed-awards").innerHTML = awards;
+			}).catch(function (error) {
+				console.error(error);
+				alert(error.message);
 			});
 		});
 		

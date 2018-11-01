@@ -1,6 +1,18 @@
 var assert = require('assert');
 var GamePoolTestProxy = artifacts.require("./GamePoolTestProxy.sol");
 
+function getBalance(account) {
+	return new Promise(function (resolve, reject) {
+		web3.eth.getBalance(account, "latest", function (error, result) {
+			if (error) {
+				reject(error);
+			} else {
+				resolve(web3.toBigNumber(result));
+			}
+		});
+	});
+}
+
 async function createNewTestGame(accounts) {
 	let game = await GamePoolTestProxy.deployed();
 	await game.forceToCloseAllGames();
@@ -60,6 +72,7 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			
 			assert.equal(mambaGamePool.txFeeReceiver, accounts[0]);
 			assert.equal(mambaGamePool.minimumBets, '0.01');
+			assert.equal(mambaGamePool.playerAddress, accounts[0]);
 			
 			mambaGamePool.close();
 			assert.ok(!mambaGamePool.isInited);
@@ -236,6 +249,20 @@ contract('Mamba game front-end javascript', async function(accounts) {
 				assert.equal(mambaGame.state, 'Close');
 				assert.equal(mambaGame.winnerCoinIds.length, 1);
 				assert.equal(mambaGame.winnerCoinIds.length[0], 0);
+				
+				let awards = await mambaGame.getAwards();
+				assert.equal(awards, '0.398');
+				
+				let balanceBefore = await getBalance(accounts[0]);
+				
+				await mambaGame.getAwards();
+				
+				let balanceAfter = await getBalance(accounts[0]);
+				
+				awards = web3.toBigNumber(web3.toWei(awards, 'ether'));
+				let threshold = web3.toBigNumber(web3.toWei("10", "finney"));
+				
+				assert.ok(balanceBefore.add(awards).sub(balanceAfter).lte(threshold));
 				
 				mambaGame.close();
 			}
