@@ -45,7 +45,6 @@ async function setOpenCloseTime(gameId, openTime, closeTime, mambaGame) {
 }
 
 contract('Mamba game front-end javascript', async function(accounts) {
-	
 	describe("Mamba game pool", async function () {
 		it('Init parameters', async function() {
 			//let contract = await GamePool.GamePoolTestProxy();
@@ -232,6 +231,8 @@ contract('Mamba game front-end javascript', async function(accounts) {
 		});
 		
 		it('Take Bets & close game.', async function () {
+			mambaGamePool.playerAddress = accounts[1];
+			
 			assert.ok(mambaGamePool.numberOfGames > 0);
 			let gameId = mambaGamePool.numberOfGames - 1;
 			
@@ -241,57 +242,90 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			let contract = await GamePoolTestProxy.deployed();
 			await contract.setStartExRate(gameId, startExRate);
 			
-			await mambaGame.bet(0, '0.01');
-			await mambaGame.bet(0, '0.01');
-			await mambaGame.bet(1, '0.02');
+			assert.equal(mambaGame.state, 'Open');
 			
-			async function checkWinnerIds() {
-				assert.equal(mambaGame.state, 'Close');
-				assert.equal(mambaGame.winnerCoinIds.length, 1);
-				assert.equal(mambaGame.winnerCoinIds.length[0], 0);
-				
-				let awards = await mambaGame.getAwards();
-				assert.equal(awards, '0.398');
-				
-				let balanceBefore = await getBalance(accounts[0]);
-				
-				await mambaGame.getAwards();
-				
-				let balanceAfter = await getBalance(accounts[0]);
-				
-				awards = web3.toBigNumber(web3.toWei(awards, 'ether'));
-				let threshold = web3.toBigNumber(web3.toWei("10", "finney"));
-				
-				assert.ok(balanceBefore.add(awards).sub(balanceAfter).lte(threshold));
-				
-				mambaGame.close();
+			await mambaGame.bet(0, '0.02');
+			await mambaGame.bet(0, '0.01');
+			await mambaGame.bet(1, '0.01');
+			
+			// Close the game.
+			let endExRate = [200 // 100%
+				, 220 // 10%
+				, 300 // 0%
+				, 360 // -10%
+				, 600]; // 20%
+			await contract.setEndExRate(gameId, endExRate);
+			await contract.setY(gameId, 10);
+			
+			function waitForCloseStateChange() {
+				return new Promise(function (resolve, reject) {
+					if (mambaGame.state === 'Closed') {
+						resolve();
+					} else if (mambaGame.state != 'Open') {
+						reject("Game state is not corrected.")
+					} else {
+						mambaGame.subscribe('StateChanged', function (state) {
+							mambaGame.unsubscribe('StateChanged');
+							if (state === 'Closed') {
+								resolve();
+							} else {
+								reject();
+							}
+						});
+					}
+				});
 			}
 			
-			async function checkBetsAndClose() {
-				assert.equal(mambaGame.coins[0].totalBets, 2);
-				assert.equal(mambaGame.coins[0].largestBets, '0.00995');
-				assert.equal(mambaGame.coins[0].totalBets, '0.0199');
+			await contract.close(gameId, {from: accounts[0], gasLimit: 371211});
+			await waitForCloseStateChange();
 			
-				assert.equal(mambaGame.coins[1].totalBets, 1);
-				assert.equal(mambaGame.coins[1].largestBets, '0.0199');
-				assert.equal(mambaGame.coins[1].totalBets, '0.0199');
+			// Check bets.
+			assert.equal(mambaGame.coins[0].numberOfBets, 2);
+			assert.equal(mambaGame.coins[0].largestBets, '0.0199');
+			assert.equal(mambaGame.coins[0].totalBets, '0.02985');
 			
-				assert.equal(mambaGame.state, 'Open');
-				
-				// Close the game.
-				let endExRate = [200 // 100%
-					, 220 // 10%
-					, 300 // 0%
-					, 360 // -10%
-					, 600]; // 20%
-				await contract.setEndExRate(gameId, endExRate);
-				await contract.setY(gameId, 10);
-				await contract.close(gameId, {from: accounts[0], gasLimit: 371211});
-				
-				setTimeout(checkWinnerIds, 500);
-			}
+			assert.equal(mambaGame.coins[1].numberOfBets, 1);
+			assert.equal(mambaGame.coins[1].largestBets, '0.00995');
+			assert.equal(mambaGame.coins[1].totalBets, '0.00995');
 			
-			setTimeout(checkBetsAndClose, 500);
+			// Test calculate awards.
+			let awards = await mambaGame.calculateAwards();
+			assert.equal(awards, '0.0398');
+			
+			let balanceBefore = await getBalance(mambaGamePool.playerAddress);				
+			await mambaGame.getAwards();
+			
+			// Do a longer operation to wait blockchain finished.
+			let history = await mambaGamePool.getPlayerBetsHistory();
+			assert.equal(history.length, 3);
+			assert.equal(history[0].gameId, gameId);
+			assert.equal(history[0].coinId, 0);
+			assert.equal(history[0].betAmount, '0.0199');
+			assert.ok(typeof history[0].timeStamp != 'undefined');
+			assert.equal(history[1].gameId, gameId);
+			assert.equal(history[1].coinId, 0);
+			assert.equal(history[1].betAmount, '0.00995');
+			assert.ok(typeof history[1].timeStamp != 'undefined');
+			assert.equal(history[2].gameId, gameId);
+			assert.equal(history[2].coinId, 1);
+			assert.equal(history[2].betAmount, '0.00995');
+			assert.ok(typeof history[2].timeStamp != 'undefined');
+			
+			// Check balace.
+			let balanceAfter = await getBalance(mambaGamePool.playerAddress);
+			
+			awards = web3.toBigNumber(web3.toWei(awards, 'ether'));
+			let threshold = web3.toBigNumber(web3.toWei("10", "finney"));
+			
+			assert.ok(balanceBefore.add(awards).sub(balanceAfter).lte(threshold));
+			
+			// check state.
+			assert.equal(mambaGame.state, 'Closed');
+			assert.equal(mambaGame.winnerCoinIds.length, 1);
+			assert.equal(mambaGame.winnerCoinIds[0], 0);
+			
+			mambaGame.close();
 		});
 	});
+	
 });

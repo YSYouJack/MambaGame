@@ -222,7 +222,7 @@
 			obj.coinBetEvent.watch(function(error, result) {
 				if (!error) {
 					if (result.blockNumber > obj.initBlockNumber) {
-						obj.callbackForCoinBet(result.args.coinId.toNumber(), result.args.player, result.args.bets);
+						obj.callbackForCoinBet(result.args.coinId.toNumber(), result.args.player, result.args.amount);
 					}
 				} else {
 					console.error(error);
@@ -233,7 +233,7 @@
 			obj.coinLargestBetEvent.watch(function(error, result) {
 				if (!error) {
 					if (result.blockNumber > obj.initBlockNumber) {
-						obj.callbackForCoinLargestBet(result.args.coinId.toNumber(), result.args.bets);
+						obj.callbackForCoinLargestBet(result.args.coinId.toNumber(), result.args.amount);
 					}
 				} else {
 					console.error(error);
@@ -469,7 +469,7 @@
 		var obj;
 		obj = this;
 		
-		console.log("bet " + new Date + " " + web3.eth.accounts[0]);
+		console.log("bet " + new Date + " " + this.playerAddress);
 		
 		return new Promise(function (resolve, reject) {
 			let now = new Date();
@@ -486,7 +486,12 @@
 				if (minBets > betsInWei) {
 					reject("Your bets amount is less than mininum bets.");
 				} else {
-					obj.contract.bet(obj.id, coinId, {value: betsInWei, from: web3.eth.accounts[0]}, function(error, result) {
+					let options = { value: betsInWei
+						, from: obj.playerAddress
+						, gas: '200000'
+					};
+					
+					obj.contract.bet(obj.id, coinId, options, function(error, result) {
 						if (error) {
 							reject(error);
 						} else {
@@ -503,7 +508,7 @@
 		obj = this;
 		
 		return new Promise(function (resolve, reject) {
-			obj.contract.calculateAwardAmount.call(obj.id, {from: web3.eth.accounts[0]}, function (error, result) {
+			obj.contract.calculateAwardAmount.call(obj.id, {from: obj.playerAddress}, function (error, result) {
 				if (error) {
 					reject(error);
 				} else {
@@ -518,7 +523,7 @@
 		obj = this;
 		
 		return new Promise(function (resolve, reject) {
-			obj.contract.getAwards.call(obj.id, {from: web3.eth.accounts[0]}, function (error, result) {
+			obj.contract.getAwards(obj.id, {from: obj.playerAddress}, function (error, result) {
 				if (error) {
 					reject(error);
 				} else {
@@ -549,13 +554,11 @@
 	}
 	
 	MambaGame.prototype.callbackForStateChanged = function (state) {
-		this.state = state;
-		
 		var obj;
 		obj = this;
 		
-		if ('Closed' == state) {	
-			let promise = [];
+		if ('Closed' == state) {
+			let promises = [];
 			for (let i = 0; i < 5; ++i) {
 				promises.push(new Promise(function (resolve, reject) {
 					obj.contract.gameBetData(obj.id, i, function (error, result) {
@@ -565,6 +568,7 @@
 							obj.coins[i].totalBets = web3.fromWei(result[0].toString(), 'ether');
 							obj.coins[i].largestBets = web3.fromWei(result[1].toString(), 'ether');
 							obj.coins[i].numberOfBets = result[2].toNumber();
+							resolve();
 						}
 					});
 				}));
@@ -603,6 +607,7 @@
 					});
 				}
 			}).then(function () {
+				obj.state = state;
 				if (obj.cb['StateChanged']) {
 					obj.cb['StateChanged'](state);
 				}
@@ -638,6 +643,7 @@
 				}, this.closeTime.getTime() - Date.now() + 2000);
 			}
 			
+			this.state = state;
 			if (this.cb['StateChanged']) {
 				this.cb['StateChanged'](state);
 			}
@@ -647,7 +653,7 @@
 	
 	MambaGame.prototype.callbackForCoinBet = function (id, player, bets) {
 		this.coins[id].numberOfBets += 1;
-		var totalBets = web3.toBigNumber(web3.toWei(this.coins[id].totalBets, 'ether'));
+		let totalBets = web3.toBigNumber(web3.toWei(this.coins[id].totalBets, 'ether'));
 		totalBets = totalBets.add(bets);
 		this.coins[id].totalBets = web3.fromWei(totalBets, 'ether').toString();
 			
@@ -703,10 +709,10 @@
 		}
 	}
 	
-	// Mamba game manager definition.
+	// Mamba game pool definition.
 	var mambaGamePool = {
 		isInited: false
-		, abi: [{"constant":true,"inputs":[],"name":"txFeeReceiver","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"close","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"games","outputs":[{"name":"id","type":"uint256"},{"name":"openTime","type":"uint256"},{"name":"closeTime","type":"uint256"},{"name":"duration","type":"uint256"},{"name":"hiddenTimeBeforeClose","type":"uint256"},{"name":"Y","type":"uint8"},{"name":"A","type":"uint8"},{"name":"B","type":"uint8"},{"name":"txFee","type":"uint16"},{"name":"isFinished","type":"bool"},{"name":"isYChoosed","type":"bool"},{"name":"minDiffBets","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"isBetInformationHidden","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"bytes32"},{"name":"_result","type":"string"}],"name":"__callback","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_openTime","type":"uint256"},{"name":"_duration","type":"uint256"},{"name":"_coinName0","type":"string"},{"name":"_coinName1","type":"string"},{"name":"_coinName2","type":"string"},{"name":"_coinName3","type":"string"},{"name":"_coinName4","type":"string"},{"name":"_YDistribution","type":"uint8[50]"},{"name":"_A","type":"uint8"},{"name":"_B","type":"uint8"},{"name":"_txFee","type":"uint16"},{"name":"_minDiffBets","type":"uint256"}],"name":"createNewGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"myid","type":"bytes32"},{"name":"result","type":"string"},{"name":"proof","type":"bytes"}],"name":"__callback","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"fetchExRate","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":true,"inputs":[],"name":"HIDDEN_TIME_BEFORE_CLOSE","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"oraclizeFee","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameState","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"withdrawOraclizeFee","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"fetchStartRate","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"MIN_BET","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameYDistribution","outputs":[{"name":"","type":"uint8[50]"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"bet","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[],"name":"renounceOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"gameBetData","outputs":[{"name":"totalBets","type":"uint256"},{"name":"largestBets","type":"uint256"},{"name":"numberOfBets","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"bytes32"}],"name":"queryRecords","outputs":[{"name":"recordType","type":"uint8"},{"name":"gameId","type":"uint256"},{"name":"arg","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"isOwner","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"gameCoinData","outputs":[{"name":"name","type":"string"},{"name":"startExRate","type":"int32"},{"name":"timeStampOfStartExRate","type":"uint256"},{"name":"endExRate","type":"int32"},{"name":"timeStampOfEndExRate","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"getAwards","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"ORICALIZE_GAS_LIMIT","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"closeErrorGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameNumberOfWinnerCoinIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_winnerId","type":"uint256"}],"name":"gameWinnerCoinIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"calculateAwardAmount","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"sendOraclizeFee","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"numberOfGames","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"_txFeeReceiver","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"payable":true,"stateMutability":"payable","type":"fallback"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"rate","type":"int32"},{"indexed":false,"name":"timeStamp","type":"uint256"}],"name":"StartExRateUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"rate","type":"int32"},{"indexed":false,"name":"timeStamp","type":"uint256"}],"name":"EndExRateUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"Y","type":"uint8"}],"name":"GameYChoosed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"message","type":"string"}],"name":"Log","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"addr","type":"address"}],"name":"LogAddr","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"player","type":"address"},{"indexed":false,"name":"amount","type":"uint256"}],"name":"CoinBet","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"amount","type":"uint256"}],"name":"CoinLargestBetChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"player","type":"address"},{"indexed":false,"name":"awards","type":"uint256"}],"name":"SendAwards","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"received","type":"uint256"}],"name":"OraclizeFeeReceived","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"used","type":"uint256"}],"name":"OraclizeFeeUsed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"queryId","type":"bytes32"}],"name":"SentOraclizeQuery","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"gameId","type":"uint256"}],"name":"GameCreated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameClosed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameExtended","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameWaitToClose","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameReady","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameOpened","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"}],"name":"OwnershipRenounced","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"},{"indexed":true,"name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"}]
+		, abi: [{"constant":true,"inputs":[],"name":"txFeeReceiver","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"close","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"games","outputs":[{"name":"id","type":"uint256"},{"name":"openTime","type":"uint256"},{"name":"closeTime","type":"uint256"},{"name":"duration","type":"uint256"},{"name":"hiddenTimeBeforeClose","type":"uint256"},{"name":"Y","type":"uint8"},{"name":"A","type":"uint8"},{"name":"B","type":"uint8"},{"name":"txFee","type":"uint16"},{"name":"isFinished","type":"bool"},{"name":"isYChoosed","type":"bool"},{"name":"minDiffBets","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"isBetInformationHidden","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_id","type":"bytes32"},{"name":"_result","type":"string"}],"name":"__callback","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_openTime","type":"uint256"},{"name":"_duration","type":"uint256"},{"name":"_coinName0","type":"string"},{"name":"_coinName1","type":"string"},{"name":"_coinName2","type":"string"},{"name":"_coinName3","type":"string"},{"name":"_coinName4","type":"string"},{"name":"_YDistribution","type":"uint8[50]"},{"name":"_A","type":"uint8"},{"name":"_B","type":"uint8"},{"name":"_txFee","type":"uint16"},{"name":"_minDiffBets","type":"uint256"}],"name":"createNewGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"myid","type":"bytes32"},{"name":"result","type":"string"},{"name":"proof","type":"bytes"}],"name":"__callback","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"fetchExRate","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":true,"inputs":[],"name":"HIDDEN_TIME_BEFORE_CLOSE","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"oraclizeFee","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameState","outputs":[{"name":"","type":"uint8"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"withdrawOraclizeFee","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"fetchStartRate","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"MIN_BET","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameYDistribution","outputs":[{"name":"","type":"uint8[50]"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"bet","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[],"name":"renounceOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"gameBetData","outputs":[{"name":"totalBets","type":"uint256"},{"name":"largestBets","type":"uint256"},{"name":"numberOfBets","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"bytes32"}],"name":"queryRecords","outputs":[{"name":"recordType","type":"uint8"},{"name":"gameId","type":"uint256"},{"name":"arg","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"owner","outputs":[{"name":"","type":"address"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"isOwner","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_coinId","type":"uint256"}],"name":"gameCoinData","outputs":[{"name":"name","type":"string"},{"name":"startExRate","type":"int32"},{"name":"timeStampOfStartExRate","type":"uint256"},{"name":"endExRate","type":"int32"},{"name":"timeStampOfEndExRate","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"getAwards","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"ORICALIZE_GAS_LIMIT","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"closeErrorGame","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"gameAwardAmount","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"gameNumberOfWinnerCoinIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"},{"name":"_winnerId","type":"uint256"}],"name":"gameWinnerCoinIds","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"_gameId","type":"uint256"}],"name":"calculateAwardAmount","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":false,"inputs":[],"name":"sendOraclizeFee","outputs":[],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[{"name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":true,"inputs":[],"name":"numberOfGames","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"inputs":[{"name":"_txFeeReceiver","type":"address"}],"payable":false,"stateMutability":"nonpayable","type":"constructor"},{"payable":true,"stateMutability":"payable","type":"fallback"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"rate","type":"int32"},{"indexed":false,"name":"timeStamp","type":"uint256"}],"name":"StartExRateUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"rate","type":"int32"},{"indexed":false,"name":"timeStamp","type":"uint256"}],"name":"EndExRateUpdated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"Y","type":"uint8"}],"name":"GameYChoosed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"message","type":"string"}],"name":"Log","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"addr","type":"address"}],"name":"LogAddr","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"player","type":"address"},{"indexed":false,"name":"amount","type":"uint256"}],"name":"CoinBet","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"coinId","type":"uint256"},{"indexed":false,"name":"amount","type":"uint256"}],"name":"CoinLargestBetChanged","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"player","type":"address"},{"indexed":false,"name":"awards","type":"uint256"}],"name":"SendAwards","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"received","type":"uint256"}],"name":"OraclizeFeeReceived","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"used","type":"uint256"}],"name":"OraclizeFeeUsed","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"queryId","type":"bytes32"}],"name":"SentOraclizeQuery","type":"event"},{"anonymous":false,"inputs":[{"indexed":false,"name":"gameId","type":"uint256"}],"name":"GameCreated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameClosed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"},{"indexed":false,"name":"closeTime","type":"uint256"}],"name":"GameExtended","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameWaitToClose","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameReady","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"gameId","type":"uint256"}],"name":"GameOpened","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"}],"name":"OwnershipRenounced","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"previousOwner","type":"address"},{"indexed":true,"name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"}]
 		, address: '0xbad7d74c4de6837de976e8c1f434677191f4fa58'
 		, init: function () {
 			let promise = null;
@@ -842,7 +848,7 @@
 		, game: function(id) {
 			
 			if (!this.isInited) {
-				return Promise.reject("Mamba game manager was not initialized successfully.");
+				return Promise.reject("Mamba game pool was not initialized successfully.");
 			} else if (id < 0 || id >= this.numberOfGames) {
 				return Promise.reject("Game id out of range.");
 			} else {
@@ -863,6 +869,10 @@
 					game.txFeeReceiver = this.txFeeReceiver;
 				}
 				
+				if (!game.playerAddress) {
+					game.playerAddress = this.playerAddress;
+				}
+				
 				return game.fetchConstantValue().then(function () {
 					return Promise.resolve(game);
 				});
@@ -878,6 +888,82 @@
 		}
 		, unsubscribeForNewGame: function () {
 			this.callbackFnForNewGame = null;
+		}
+		, getPlayerBetsHistory: function (startBlockNumber = 0) {
+			if (!this.isInited) {
+				return Promise.reject("Mamba game pool was not initialized successfully.");
+			} else {
+				let topicHash;
+				for (let i = 0; i < mambaGamePool.abi.length; ++i) {
+					if (mambaGamePool.abi[i].name === 'CoinBet' && mambaGamePool.abi[i].type === 'event') {
+						let topicStr = 'CoinBet(';
+						for (let j = 0; j < mambaGamePool.abi[i].inputs.length; ++j) {
+							if (0 != j) {
+								topicStr += ',';
+							}
+							topicStr += mambaGamePool.abi[i].inputs[j].type;
+						}
+						topicStr += ')';
+						topicHash = web3.sha3(topicStr);
+						break;
+					}
+				}
+				
+				if (!topicHash) {
+					return Promise.reject("Mamba game pool abi is incorrect.");
+				} else {
+					return new Promise(function (resolve, reject) {
+						let options = {fromBlock: startBlockNumber
+							, toBlock: 'latest'
+							, address: mambaGamePool.address
+							, topics: [topicHash]};
+						
+						var filter = web3.eth.filter(options);
+						
+						filter.get(function(error, result) {
+							if (error) {
+								reject(error);
+							} else {
+								let hist = [];
+								for (let i = 0; i < result.length; ++i) {
+									let addr = '0x' + result[i].data.substr(90, 40);
+									if (addr != mambaGamePool.playerAddress || result[i].removed) {
+										continue;
+									}
+									
+									hist.push({ blockNumber: result[i].blockNumber
+										, gameId: web3.toDecimal(result[i].topics[1])
+										, coinId: web3.toDecimal(result[i].data.substr(0, 66))
+										, betAmount: web3.fromWei(web3.toBigNumber('0x' + result[i].data.slice(130)).toString(), 'ether')
+										, txHash: result[i].transactionHash
+									});
+								}
+								resolve(hist);
+							}
+						});
+					}).then(function (hist) {
+						let promises = [];
+						for (let i = 0; i < hist.length; ++i) {
+							promises.push(new Promise(function (resolve, reject) {
+								web3.eth.getBlock(hist[i].blockNumber, false, function (error, result) {
+									if (error) {
+										reject(error);
+									} else {
+										resolve(new Date(result.timestamp * 1000));
+									}
+								});
+							}));
+						}
+						
+						return Promise.all(promises).then(function (timestamps) {
+							for (let i = 0; i < hist.length; ++i) {
+								hist[i].timeStamp = timestamps[i];
+							}
+							return Promise.resolve(hist);
+						});
+					});
+				}
+			}
 		}
 	}
 	

@@ -63,6 +63,24 @@ Returns the player address on blockchain. This property exists after the `mambaG
 * The given game id is out of range.
 * Some error happens on interaction with Ethereum.
 
+#### `mambaGamePool.getPlayerBetsHistory(startBlockNumber)`
+Query player bets history from `startBlockNumber` to latest block. Not includes the pending tx.
+##### Parameters
+`Number` - Start block number to query. (default = 0).
+##### Returns
+`Promise` - Returns an array of bets records, an empty array if no bets history. Returns error if one of the following conditions happens.
+* The `mambaGamePool.init()` was failed or not called.
+* The given game id is out of range.
+* Some error happens on interaction with Ethereum.
+
+The record object has following fields.
+* blockNumber `Number` - The mined block number of the bet tx.
+* gameId `Number` - Game id of the bet.
+* coinId `Number` - Coin id of the bet.
+* betAmount `String` - Bet amount in ether.
+* txHash `String` - The bet tx hash.
+* timeStamp `Date` - The timestamp of mined block.
+
 ### MambaGame
 
 #### `mambaGame.YDistribution`
