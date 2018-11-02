@@ -44,7 +44,7 @@ Install the Dependenies
 
 How to Run Test Cases
 ------------------------
-1. Build & run a private chain. Make sure the rpc is openned for http://localhost:8545 .[link](https://medium.com/mercuryprotocol/how-to-create-your-own-private-ethereum-blockchain-dad6af82fc9f)
+1. Build & run a private chain. Make sure the rpc is openned for http://localhost:8545. [link](https://medium.com/mercuryprotocol/how-to-create-your-own-private-ethereum-blockchain-dad6af82fc9f)
 2. Create & lock 11 accounts.
 3. Mined or generated some ethers to all 11 accounts, at least 1 ether.
 4. Run ethereum-bridge. `ethereum-bridge -H localhost:8545 -a 10`. Please don't use the default account or oraclize, because we use the default account to interact smart contracts in test cases.
