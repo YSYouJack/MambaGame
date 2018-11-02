@@ -93,11 +93,9 @@ window.addEventListener('load', function () {
 				
 				game.subscribe('StateChanged', function (state) {
 					if (state === 'Open') {
-						console.log('aaaa');
 						document.getElementById("game-close-time").innerHTML = game.closeTime;
 						document.getElementById("game-y").innerHTML = game.Y;
 						for (let i = 0; i < game.coins.length; ++i) {
-							console.log(game.coins[i]);
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
 							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
@@ -105,23 +103,19 @@ window.addEventListener('load', function () {
 						}
 						document.getElementById("bet-form-submit-btn").disabled = false;
 					} else if (state === 'Ready') {
-						console.log('aabb');
 						for (let i = 0; i < game.coins.length; ++i) {
-							console.log(game.coins[i]);
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
 							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
 						}
 						document.getElementById("bet-form-submit-btn").disabled = true;
 					} else if (state === 'WaitToClose') {
-						console.log('aacc');
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
 						}
 						document.getElementById("game-y").innerHTML = game.Y;
 						document.getElementById("bet-form-submit-btn").disabled = true;
-					} else if (state === 'Close') {
-						console.log('closed ' + Date.now());
+					} else if (state === 'Closed') {
 						
 						if (game.winnerCoinIds) {
 							document.getElementById("game-winner").innerHTML = game.winnerCoinIds;

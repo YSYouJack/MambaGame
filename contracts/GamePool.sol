@@ -319,6 +319,7 @@ contract GamePool is Ownable, usingOraclize {
 		    emit GameClosed(_gameId);
 		} else {
 		    game.Y = 0;
+		    game.isYChoosed = false;
 		    game.coins[0].endExRate = 0;
 		    game.coins[1].endExRate = 0;
 		    game.coins[2].endExRate = 0;
