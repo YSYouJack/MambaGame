@@ -26,7 +26,7 @@ contract GamePool is Ownable, usingOraclize {
     
     uint256 public MIN_BET = 10 finney; // 0.01 ether.
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
-	uint256 public ORICALIZE_GAS_LIMIT = 100000;
+	uint256 public ORICALIZE_GAS_LIMIT = 150000;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
     event EndExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
