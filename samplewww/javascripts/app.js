@@ -7,6 +7,30 @@ window.addEventListener('load', function () {
 		document.getElementById("number-of-games").innerHTML = mambaGamePool.numberOfGames;
 		document.getElementById("min-bets").innerHTML = mambaGamePool.minimumBets;
 		document.getElementById("tx-fee-receiver").innerHTML = mambaGamePool.txFeeReceiver;
+		document.getElementById("player-address").innerHTML = mambaGamePool.playerAddress;
+		
+		var startBlockNumber = 0;
+		function updateBetHistory() {
+			mambaGamePool.getPlayerBetsHistory(startBlockNumber).then(function (history) {
+				let el = document.getElementById("bet-history-table");
+				for (let i = 0; i < history.length; ++i) {
+					let row = el.insertRow(-1);
+					row.insertCell(0).innerHTML = history[i].gameId;
+					row.insertCell(1).innerHTML = history[i].coinId;
+					row.insertCell(2).innerHTML = history[i].betAmount + ' ether';
+					row.insertCell(3).innerHTML = history[i].txHash;
+					row.insertCell(4).innerHTML = history[i].timeStamp;
+					
+					startBlockNumber = Math.max(startBlockNumber, history[i].blockNumber + 1);
+				}
+			}).catch(function (error) {
+				console.error(error);
+				alert(error.message);
+			});
+		}
+		
+		setInterval(updateBetHistory, 60000);
+		updateBetHistory();
 		
 		mambaGamePool.subscribeForNewGame(function (numberOfGames) {
 			document.getElementById("number-of-games").innerHTML = numberOfGames;
@@ -69,32 +93,52 @@ window.addEventListener('load', function () {
 				
 				game.subscribe('StateChanged', function (state) {
 					if (state === 'Open') {
+						console.log('aaaa');
 						document.getElementById("game-close-time").innerHTML = game.closeTime;
 						document.getElementById("game-y").innerHTML = game.Y;
 						for (let i = 0; i < game.coins.length; ++i) {
+							console.log(game.coins[i]);
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
 							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
 						}
+						document.getElementById("bet-form-submit-btn").disabled = false;
 					} else if (state === 'Ready') {
+						console.log('aabb');
 						for (let i = 0; i < game.coins.length; ++i) {
+							console.log(game.coins[i]);
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
 							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
 						}
+						document.getElementById("bet-form-submit-btn").disabled = true;
 					} else if (state === 'WaitToClose') {
+						console.log('aacc');
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
 						}
 						document.getElementById("game-y").innerHTML = game.Y;
+						document.getElementById("bet-form-submit-btn").disabled = true;
 					} else if (state === 'Close') {
+						console.log('closed ' + Date.now());
+						
+						if (game.winnerCoinIds) {
+							document.getElementById("game-winner").innerHTML = game.winnerCoinIds;
+						}
+						
+						document.getElementById("bet-form-submit-btn").disabled = true;
 						game.calculateAwards().then(function (awards) {
 							document.getElementById("unclaimed-awards").innerHTML = awards;
+							if (Number.parseFloat(awards) != 0) {
+								document.getElementById("get-awards").disabled = false;
+							}
 						}).catch(function (error) {
 							console.error(error);
 							alert(error.message);
 						});
+					} else {
+						document.getElementById("bet-form-submit-btn").disabled = true;
 					}
 					
 					document.getElementById("game-state").innerHTML = state;
@@ -128,11 +172,18 @@ window.addEventListener('load', function () {
 					document.getElementById("coins-" + coinId + "-current-exrate").innerHTML = exrate;
 				});
 				
-				document.getElementById("bet-form-submit-btn").disabled = false;
+				if (game.state === 'Open') {
+					document.getElementById("bet-form-submit-btn").disabled = false;
+				} else {
+					document.getElementById("bet-form-submit-btn").disabled = true;
+				}
 				
 				return game.calculateAwards();
 			}).then(function (awards) {
 				document.getElementById("unclaimed-awards").innerHTML = awards;
+				if (Number.parseFloat(awards) != 0) {
+					document.getElementById("get-awards").disabled = false;
+				}
 			}).catch(function (error) {
 				console.error(error);
 				alert(error.message);
@@ -149,6 +200,20 @@ window.addEventListener('load', function () {
 				}).catch(console.error);
 			}
 		});
+		
+		document.getElementById("get-awards").addEventListener('click', function (event) {
+			event.preventDefault();
+			if (game) {
+				game.getAwards().then(function () {
+					document.getElementById("unclaimed-awards").innerHTML = 0;
+					document.getElementById("get-awards").disabled = true;
+				}).catch(function (error) {
+					console.error(error);
+					alert(error.message);
+				});
+			}
+		});
+		
 	}).catch(function (error) {
 		console.error(error);
 		alert(error.message);

@@ -1,5 +1,6 @@
 {
   "server": {
     "baseDir": ["./samplewww", "./jslib"]
-  }
+  },
+  "ghostMode": false
 }

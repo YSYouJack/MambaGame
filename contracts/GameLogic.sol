@@ -337,16 +337,13 @@ library GameLogic {
             c.largestBetAmount = b.betAmount;
             c.numberOfLargestBetTx = 1;
             
-            if (!isBetInformationHidden(game)) {     
-        	    emit CoinLargestBetChanged(game.id, coinId, b.betAmount);
-            }
+            emit CoinLargestBetChanged(game.id, coinId, b.betAmount);
+            
         } else if (b.betAmount == c.largestBetAmount) {
             ++c.numberOfLargestBetTx;
         }
         
-        if (!isBetInformationHidden(game)) {
-            emit CoinBet(game.id, coinId, msg.sender, b.betAmount);
-        }
+        emit CoinBet(game.id, coinId, msg.sender, b.betAmount);
 	}
 	
 	function isBetInformationHidden(Instance storage game) 

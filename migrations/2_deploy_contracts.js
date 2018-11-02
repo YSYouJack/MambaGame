@@ -8,9 +8,9 @@ module.exports = function(deployer, network, accounts) {
 		deployer.deploy(GameLogic);
 		deployer.link(GameLogic, GamePoolTestProxy);
 		deployer.deploy(GamePoolTestProxy, accounts[0]);
-	} else {
-		deployer.deploy(GameLogic, {overwrite: false});
+	} else if (network == "rinkeby"){
+		deployer.deploy(GameLogic);
 		deployer.link(GameLogic, GamePool);
-		deployer.deploy(GamePool, accounts[0], {overwrite: false});
+		deployer.deploy(GamePool, accounts[0]);
 	}
 };

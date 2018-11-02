@@ -5,14 +5,20 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<script type="text/javascript" src="dist/mambagame.js"></script>
 		<script type="text/javascript" src="./javascripts/app.js"></script>
+		<style>
+			table, th, td {
+				border: 1px solid black;
+			}
+		</style>
 	</head>
 	<body>
 		<h2>Mamba Game Pool</h2>
-		Address: <span id ="addr">xxx</span></br>
+		Game Contract Address: <span id ="addr">xxx</span></br>
 		Is inited: <span id ="is-inited">xxx</span></br>
 		Number of games: <span id ="number-of-games">0</span></br>
 		Minimum bets: <span id ="min-bets">xxx</span> ether</br>
 		Wallet for Receiving fee: <span id ="tx-fee-receiver">xxx</span></br>
+		Player: <span id ="player-address">xxx</span></br>
 		
 		<select id="game-selector">
 			<option value="" disabled selected>Choose game</option>
@@ -32,7 +38,9 @@
 		Y Distribution Length: <span id="game-y-dist-length">xxx</span></br>	
 		Y Distribution: [<span id="game-y-dist">xxx</span>]</br>
 		Winner ids: <span id="game-winner"></span></br>
-		Your unclaimed awards: <span id="unclaimed-awards">0</span> ether</br>
+		Your unclaimed awards: <span id="unclaimed-awards">0</span> ether
+		<button type="button" id="get-awards" disabled>Get Awards</button></br>
+		
 		<form id="bet-form">
 			<label for="coin-id-selector">Coin Id:</label>
 			<select id="coin-id-selector" required>
@@ -47,6 +55,7 @@
 			<input type="number" step="any" id="bet-amount" value="0.1" required>
 			<button type="submit" id="bet-form-submit-btn" disabled>Bet</button>
 		</form>
+		
 		
 		<p>
 		<strong>Coin 0 - <span id ="coins-0-name">xxx</span> </strong> <span id ="coins-0-current-exrate">xxx</span> </br>
@@ -83,6 +92,18 @@
 		Total bets: <span id ="coins-4-total-bets">xxx</span> ether
 		Largest bets: <span id ="coins-4-largest-bets">xxx</span> ether
 		Number of bets: <span id ="coins-4-number-of-bets">xxx</span>
+		
+		<hr/>
+		Bet History: 
+		<table id="bet-history-table">
+			<tr>
+				<th>Game Id</th>
+				<th>Coin Id</th>
+				<th>Bet Amount</th>
+				<th>Tx Hash</th>
+				<th>Timestamp</th>
+			</tr>
+		</table>
 		
 		<hr/>
 		Events: <span id="game-event"></span>

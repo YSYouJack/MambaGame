@@ -282,3 +282,7 @@ Unsubscribe one of the event.
 * StateChanged: Called when the game state has been changed.
 ##### Returns
 Throw error when the event type was not supported
+
+#### `mambaGame.isBetInformationHidden()`
+##### Returns
+`Boolean` - If true, the Bet and LargestBetChanged will not be triggered.

@@ -26,7 +26,7 @@ contract GamePool is Ownable, usingOraclize {
     
     uint256 public MIN_BET = 10 finney; // 0.01 ether.
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
-	uint256 public ORICALIZE_GAS_LIMIT = 200000;
+	uint256 public ORICALIZE_GAS_LIMIT = 100000;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
     event EndExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
@@ -252,7 +252,7 @@ contract GamePool is Ownable, usingOraclize {
 	    GameLogic.bet(game, bets, _coinId, txFeeReceiver);
 	}
 	
-	function fetchStartRate(uint256 _gameId) public onlyOwner {
+	function fetchStartExRate(uint256 _gameId) public onlyOwner {
 	    // Check the game id.
         require(_gameId < games.length);
         
@@ -274,7 +274,7 @@ contract GamePool is Ownable, usingOraclize {
 		}
     }	
     
-    function fetchExRate(uint256 _gameId) public onlyOwner payable {
+    function fetchEndExRate(uint256 _gameId) public onlyOwner payable {
         // Check the game id.
         require(_gameId < games.length);
         
@@ -418,8 +418,10 @@ contract GamePool is Ownable, usingOraclize {
 	            delete queryRecords[_id];
 	            emit StartExRateUpdated(gameId, coinId, game.coins[coinId].startExRate, now);
 	            
-	            if (GameLogic.state(game) == GameLogic.State.WaitToClose) {
-	                emit GameWaitToClose(gameId);
+	            if (GameLogic.state(game) == GameLogic.State.Ready) {
+	                emit GameReady(gameId);
+	            } else if (GameLogic.state(game) == GameLogic.State.Open) {
+	                emit GameOpened(gameId);
 	            }
 	            
 	        } else if (RecordType.EndExRate == queryRecords[_id].recordType) {
@@ -428,10 +430,8 @@ contract GamePool is Ownable, usingOraclize {
 	            delete queryRecords[_id];
 	            emit EndExRateUpdated(gameId, coinId, game.coins[coinId].endExRate, now);
 	            
-	            if (GameLogic.state(game) == GameLogic.State.Ready) {
-	                emit GameReady(gameId);
-	            } else if (GameLogic.state(game) == GameLogic.State.Open) {
-	                emit GameOpened(gameId);
+	            if (GameLogic.state(game) == GameLogic.State.WaitToClose) {
+	                emit GameWaitToClose(gameId);
 	            }
 	            
 	        } else {
