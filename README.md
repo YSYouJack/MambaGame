@@ -17,8 +17,9 @@ We followed the folder structure of truffle framework.
  contracts\GamePool.sol            | Source code file of game pool contract. This contract is the main entry for all game operations. 
  contracts\GamePoolTestProxy.sol   | Source code file of game pool proxy contract. Used for testing. 
  contracts\Migrations.sol          | Contract for truffle migration. 
- doc\                              | Contains the document of javascript dApp warpper. 
- doc\JavascriptApi.md              | The API document of javascript dApp warpper. 
+ doc\                              | Contains the documents. 
+ doc\JavascriptApi.md              | The API document of javascript dApp warpper.
+ doc\GamePool_Contract_Operations.md | The operation document of GamePool contract.
  jslib\                            | Contains the javascript code of dApp wrapper. 
  jslib\dist\mambagame.js           | The javascript code of dApp wrapper. 
  migrations\                       | Contains the truffle migration scripts. 
