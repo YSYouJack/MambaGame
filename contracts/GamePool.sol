@@ -40,6 +40,7 @@ contract GamePool is Ownable, usingOraclize {
 	event OraclizeFeeReceived(uint256 received);
 	event OraclizeFeeUsed(uint256 used);
 	event SentOraclizeQuery(bytes32 queryId);
+	event SendTxFee(address receiver, uint256 feeAmount);
 	
 	event GameCreated(uint256 gameId);
 	
@@ -331,7 +332,8 @@ contract GamePool is Ownable, usingOraclize {
 		    game.coins[3].timeStampOfEndExRate = 0;
 		    game.coins[4].timeStampOfEndExRate = 0;
 		    
-		    game.closeTime = game.closeTime.add(game.duration);
+		    // ((now - open) / duration + 1) * duration + open - 1;
+		    game.closeTime = now.sub(game.openTime).div(game.duration).add(1).mul(game.duration).add(game.openTime).sub(1);
 		    emit GameExtended(_gameId, game.closeTime);
 		}
 		

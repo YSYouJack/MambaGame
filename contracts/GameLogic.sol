@@ -63,6 +63,7 @@ library GameLogic {
 	
 	event CoinBet(uint256 indexed gameId, uint256 coinId, address player, uint256 amount);
 	event CoinLargestBetChanged(uint256 indexed gameId, uint256 coinId, uint256 amount);
+	event SendTxFee(address receiver, uint256 feeAmount);
 	
 	function state(Instance storage game) public view returns (State) {
 	    if (game.isFinished) {
@@ -320,7 +321,10 @@ library GameLogic {
 	    require(address(0) != txFeeReceiver && address(this) != txFeeReceiver);
 	    
 	    uint256 txFeeAmount = msg.value.mul(game.txFee).div(1000);
-	    txFeeReceiver.transfer(txFeeAmount);
+	    if (0 < txFeeAmount) {
+	        txFeeReceiver.transfer(txFeeAmount);
+	        emit SendTxFee(txFeeReceiver, txFeeAmount);
+	    }
 	    
 	    CoinBets storage c = gameBets.coinbets[coinId];
 	    
