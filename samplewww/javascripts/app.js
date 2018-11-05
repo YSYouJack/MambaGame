@@ -1,6 +1,14 @@
 window.addEventListener('load', function () {
 	var game;
 	
+	function updateTimeStamp(elementId, timeStamp) {
+		if (timeStamp.getTime() == 0) {
+			document.getElementById(elementId).innerHTML = "";
+		} else {
+			document.getElementById(elementId).innerHTML = timeStamp;
+		}
+	}
+	
 	mambaGamePool.init().then(function () {
 		document.getElementById("addr").innerHTML = mambaGamePool.address;
 		document.getElementById("is-inited").innerHTML = mambaGamePool.isInited;
@@ -83,9 +91,9 @@ window.addEventListener('load', function () {
 				for (let i = 0; i < game.coins.length; ++i) {
 					document.getElementById("coins-" + i + "-name").innerHTML = game.coins[i].name;
 					document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
-					document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
+					updateTimeStamp("coins-" + i + "-start-exrate-time", game.coins[i].timeStampOfStartExRate);
 					document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
-					document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
+					updateTimeStamp("coins-" + i + "-end-exrate-time", game.coins[i].timeStampOfEndExRate);
 					document.getElementById("coins-" + i + "-total-bets").innerHTML = game.coins[i].totalBets;
 					document.getElementById("coins-" + i + "-largest-bets").innerHTML = game.coins[i].largestBets;
 					document.getElementById("coins-" + i + "-number-of-bets").innerHTML = game.coins[i].numberOfBets;
@@ -97,21 +105,21 @@ window.addEventListener('load', function () {
 						document.getElementById("game-y").innerHTML = game.Y;
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
-							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
+							updateTimeStamp("coins-" + i + "-start-exrate-time", game.coins[i].timeStampOfStartExRate);
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
-							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
+							updateTimeStamp("coins-" + i + "-end-exrate-time", game.coins[i].timeStampOfEndExRate);
 						}
 						document.getElementById("bet-form-submit-btn").disabled = false;
 					} else if (state === 'Ready') {
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
-							document.getElementById("coins-" + i + "-start-exrate-time").innerHTML = game.coins[i].timeStampOfStartExRate;
+							updateTimeStamp("coins-" + i + "-start-exrate-time", game.coins[i].timeStampOfStartExRate);
 						}
 						document.getElementById("bet-form-submit-btn").disabled = true;
 					} else if (state === 'WaitToClose') {
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
-							document.getElementById("coins-" + i + "-end-exrate-time").innerHTML = game.coins[i].timeStampOfEndExRate;
+							updateTimeStamp("coins-" + i + "-end-exrate-time", game.coins[i].timeStampOfEndExRate);
 						}
 						document.getElementById("game-y").innerHTML = game.Y;
 						document.getElementById("bet-form-submit-btn").disabled = true;
@@ -164,6 +172,8 @@ window.addEventListener('load', function () {
 				
 				game.subscribe('ExrateUpdated', function (coinId, exrate) {
 					document.getElementById("coins-" + coinId + "-current-exrate").innerHTML = exrate;
+					let value = (game.coins[coinId].startExRate - exrate) * 100 / game.coins[coinId].startExRate;
+					document.getElementById("coins-" + coinId + "-current-value").innerHTML = value.toFixed(2) + '%';
 				});
 				
 				if (game.state === 'Open') {
