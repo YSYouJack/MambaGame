@@ -49,7 +49,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		assert.equal(oraclizeFee, 0);
 		
 		let ORICALIZE_GAS_LIMIT = await game.ORICALIZE_GAS_LIMIT.call();
-		assert.equal(ORICALIZE_GAS_LIMIT, 200000);
+		assert.equal(ORICALIZE_GAS_LIMIT, 150000);
 		
 		// Test MIN_BET and HIDDEN_TIME_BEFORE_CLOSE.
 		let MIN_BET = await game.MIN_BET.call();
@@ -93,7 +93,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		assert.equal(numberOfGames, 1);
 		
 		let gameData = await game.games.call(0);
-		assert.equal(gameData.length, 12);
+		assert.equal(gameData.length, 13);
 		
 		// Game id.
 		assert.equal(gameData[0], 0);
@@ -109,18 +109,21 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Hidden time
 		assert.equal(gameData[4], 300);
 		
+		// Claimed award time.
+		assert.equal(gameData[5], 2592000);
+		
 		// Y, A, B, tx fee
-		assert.equal(gameData[5], 0);
-		assert.equal(gameData[6], 10);
-		assert.equal(gameData[7], 20);
-		assert.equal(gameData[8], 5);
+		assert.equal(gameData[6], 0);
+		assert.equal(gameData[7], 10);
+		assert.equal(gameData[8], 20);
+		assert.equal(gameData[9], 5);
 		
 		// Is finished, is y choosed.
-		assert.equal(gameData[9], false);
 		assert.equal(gameData[10], false);
+		assert.equal(gameData[11], false);
 		
 		// Minimum difference bets.
-		assert.equal(gameData[11], web3.toWei("10", "finney"));	
+		assert.equal(gameData[12], web3.toWei("10", "finney"));	
 
 		// Test Y Distributions.
 		let yDist = await game.gameYDistribution.call(0);
@@ -318,8 +321,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[6];
-		let B = gameData[7];
+		let A = gameData[7];
+		let B = gameData[8];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -342,6 +345,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		let awardsFromContract0 = await game.calculateAwardAmount(gameId, {from: accounts[7]});
 		let awardsFromContract1 = await game.calculateAwardAmount(gameId, {from: accounts[8]});
 		let awardsFromContract2 = await game.calculateAwardAmount(gameId, {from: accounts[9]});
+		
+		console.log(awardsFromContract0.toString());
 		
 		assert.ok(awardsFromContract0.eq(awards0));
 		assert.ok(awardsFromContract1.eq(awards1));
@@ -420,8 +425,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[6];
-		let B = gameData[7];
+		let A = gameData[7];
+		let B = gameData[8];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -520,8 +525,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[6];
-		let B = gameData[7];
+		let A = gameData[7];
+		let B = gameData[8];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -619,8 +624,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[6];
-		let B = gameData[7];
+		let A = gameData[7];
+		let B = gameData[8];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -722,8 +727,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[6];
-		let B = gameData[7];
+		let A = gameData[7];
+		let B = gameData[8];
 		
 		let oneHundred = web3.toBigNumber("100");
 		

@@ -10,11 +10,10 @@ contract GamePoolTestProxy is GamePool {
     }
     
     function setStartExRate(uint256 _gameId, int32[5] _rates)
+        hasGameId(_gameId)
         public 
     {
-        require(_gameId < games.length);
-	   
-	    GameLogic.Instance storage game = games[_gameId];
+        GameLogic.Instance storage game = games[_gameId];
 	    for (uint256 i = 0; i < 5; ++i) {
 	        game.coins[i].startExRate = _rates[i];
 	        game.coins[i].timeStampOfStartExRate = now;
@@ -27,12 +26,11 @@ contract GamePoolTestProxy is GamePool {
 	    }
     }
     
-    function setEndExRate(uint256 _gameId, int32[5] _rates) 
+    function setEndExRate(uint256 _gameId, int32[5] _rates)
+        hasGameId(_gameId)
         public
     {
-        require(_gameId < games.length);
-	   
-	    GameLogic.Instance storage game = games[_gameId];
+        GameLogic.Instance storage game = games[_gameId];
 	    for (uint256 i = 0; i < 5; ++i) {
 	        game.coins[i].endExRate = _rates[i];
 	        game.coins[i].timeStampOfEndExRate = now;
@@ -44,31 +42,28 @@ contract GamePoolTestProxy is GamePool {
     }
     
     function setOpenCloseTime(uint256 _gameId, uint256 _openTime, uint256 _closeTime) 
+        hasGameId(_gameId)
         public
     {
-        require(_gameId < games.length);
-	   
-	    GameLogic.Instance storage game = games[_gameId];
+        GameLogic.Instance storage game = games[_gameId];
 	    require(_openTime < _closeTime);
 	    game.openTime = _openTime;
 	    game.closeTime = _closeTime;
     }
     
-    function setIsFinished(uint256 _gameId, bool _isFinished) 
+    function setIsFinished(uint256 _gameId, bool _isFinished)
+        hasGameId(_gameId)
         public
     {
-        require(_gameId < games.length);
-	   
-	    GameLogic.Instance storage game = games[_gameId];
+        GameLogic.Instance storage game = games[_gameId];
 	    game.isFinished = _isFinished;
     }
     
-    function setY(uint256 _gameId, uint8 _Y) 
+    function setY(uint256 _gameId, uint8 _Y)
+        hasGameId(_gameId)
         public
     {
-        require(_gameId < games.length);
-	   
-	    GameLogic.Instance storage game = games[_gameId];
+        GameLogic.Instance storage game = games[_gameId];
 	    game.Y = _Y;
 	    game.isYChoosed = true;
 	    
@@ -77,14 +72,13 @@ contract GamePoolTestProxy is GamePool {
 	    }
     }
     
-    function close(uint256 _gameId) 
+    function close(uint256 _gameId)
+        hasGameId(_gameId)
 	    onlyOwner 
 	    public 
 	    returns (bool)
     {
-        require(_gameId < games.length);
-	   
-	    GameLogic.Instance storage game = games[_gameId];
+        GameLogic.Instance storage game = games[_gameId];
 	    game.openTime = now - 10 minutes;
 	    game.closeTime = now - 5 seconds;
 	    return super.close(_gameId);
@@ -94,13 +88,13 @@ contract GamePoolTestProxy is GamePool {
         for (uint256 i = 0; i < games.length; ++i) {
 	        games[i].isFinished = true;
 	    }
-	    
-	    owner().transfer(gameAwardAmount());
+	}
+    
+    function setUnclaimedAwardTime(uint256 _gameId, uint256 _time)
+        hasGameId(_gameId)
+        onlyOwner
+        public
+    {
+        games[_gameId].claimTimeAfterClose = _time;
     }
-    
-    // Callback for oraclize query.
-	function __callback(bytes32 _id, string _result) public {
-	    super.__callback(_id, _result);
-     }
-    
 }

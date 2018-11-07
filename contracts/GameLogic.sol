@@ -41,6 +41,7 @@ library GameLogic {
 	    uint256 closeTime;
 	    uint256 duration;
 	    uint256 hiddenTimeBeforeClose;
+	    uint256 claimTimeAfterClose;
 	    
 	    uint8[50] YDistribution;
 	    uint8 Y;
@@ -59,6 +60,8 @@ library GameLogic {
 	struct GameBets {
 	    CoinBets[5] coinbets;
 	    mapping (address => bool) isAwardTransfered;
+	    uint256 totalAwards;
+	    uint256 claimedAwards;
 	}
 	
 	event CoinBet(uint256 indexed gameId, uint256 coinId, address player, uint256 amount);
@@ -105,10 +108,7 @@ library GameLogic {
 	    }
 	}
 	
-	function tryClose(Instance storage game
-	    , GameBets storage bets
-	    , uint256 awardAmount
-	)
+	function tryClose(Instance storage game, GameBets storage bets)
 	    public 
 	    returns (bool) 
 	{
@@ -300,7 +300,7 @@ library GameLogic {
 		}
 		
 		if (game.isFinished) {
-		    calculateAwardForCoin(game, bets, awardAmount);
+		    calculateAwardForCoin(game, bets, bets.totalAwards);
 		}
 		
 		return game.isFinished;
@@ -334,6 +334,7 @@ library GameLogic {
 	    
 	    c.totalBetAmount = b.betAmount.add(c.totalBetAmount);
 	    b.totalBetAmountByFar = c.totalBetAmount;
+	    gameBets.totalAwards =  gameBets.totalAwards.add(b.betAmount);
 	    
 	    c.playerBetMap[msg.sender].push(c.bets.length - 1);
 	    
@@ -366,7 +367,6 @@ library GameLogic {
         public
     {
         require(state(game) == State.Closed);
-        
         awardAmount = awardAmount.div(game.winnerCoinIds.length);
         
         for (uint256 i = 0; i < game.winnerCoinIds.length; ++i) {
@@ -410,6 +410,8 @@ library GameLogic {
 	    require(0 < game.winnerCoinIds.length);
 	    
 	    if (bets.isAwardTransfered[msg.sender]) {
+            return 0;
+        } else if (game.closeTime + game.claimTimeAfterClose < now) {
             return 0;
         }
 	

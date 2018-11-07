@@ -27,6 +27,7 @@ contract GamePool is Ownable, usingOraclize {
     uint256 public MIN_BET = 10 finney; // 0.01 ether.
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
 	uint256 public ORICALIZE_GAS_LIMIT = 150000;
+	uint256 public CLAIM_AWARD_TIME_AFTER_CLOSE = 30 days;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
     event EndExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
@@ -41,6 +42,7 @@ contract GamePool is Ownable, usingOraclize {
 	event OraclizeFeeUsed(uint256 used);
 	event SentOraclizeQuery(bytes32 queryId);
 	event SendTxFee(address receiver, uint256 feeAmount);
+	event GetUnclaimedAwards(uint256 indexed gameId, address receiver, uint256 feeAmount);
 	
 	event GameCreated(uint256 gameId);
 	
@@ -49,6 +51,16 @@ contract GamePool is Ownable, usingOraclize {
 	event GameWaitToClose(uint256 indexed gameId);
 	event GameReady(uint256 indexed gameId);
     event GameOpened(uint256 indexed gameId);
+    
+    modifier hasGameId(uint256 _gameId) {
+         require(_gameId < games.length && games.length == gameBets.length);
+         _;
+    }
+    
+    modifier hasCoinId(uint256 _coinId) {
+         require(_coinId < 5);
+         _;
+    }
     
     constructor(address _txFeeReceiver) public {
         require(address(0) != _txFeeReceiver);
@@ -145,6 +157,7 @@ contract GamePool is Ownable, usingOraclize {
 		game.closeTime = _openTime + _duration - 1;
 		game.duration = _duration;
 		game.hiddenTimeBeforeClose = HIDDEN_TIME_BEFORE_CLOSE;
+		game.claimTimeAfterClose = CLAIM_AWARD_TIME_AFTER_CLOSE;
 		
 		game.coins[0].name = _coinName0;
 		game.coins[1].name = _coinName1;
@@ -164,14 +177,13 @@ contract GamePool is Ownable, usingOraclize {
 	}
 	
 	function gameCoinData(uint256 _gameId, uint256 _coinId)
+	    hasGameId(_gameId)
+	    hasCoinId(_coinId)
 	    public 
 	    view 
 	    returns (string name, int32 startExRate, uint256 timeStampOfStartExRate
 	             , int32 endExRate, uint256 timeStampOfEndExRate)
 	{
-	    require(_gameId < games.length);
-	    require(_coinId < 5);
-	    
 	    GameLogic.Instance storage game = games[_gameId];
 	    
 	    name = game.coins[_coinId].name;
@@ -182,14 +194,12 @@ contract GamePool is Ownable, usingOraclize {
 	}
 	
 	function gameBetData(uint256 _gameId, uint256 _coinId)
+	    hasGameId(_gameId)
+	    hasCoinId(_coinId)
 	    public 
 	    view 
 	    returns (uint256 totalBets, uint256 largestBets, uint256 numberOfBets)
 	{
-	    require(_gameId < games.length);
-	    require(_gameId < gameBets.length);
-	    require(_coinId < 5);
-	    
 	    GameLogic.Instance storage game = games[_gameId];
 	    GameLogic.GameBets storage bets = gameBets[_gameId];
 	    
@@ -205,19 +215,30 @@ contract GamePool is Ownable, usingOraclize {
         return games.length;
     }
     
-    function gameYDistribution(uint256 _gameId) public view returns (uint8[50]) {
-        require(_gameId < games.length);
+    function gameYDistribution(uint256 _gameId) 
+        hasGameId(_gameId)
+	    public 
+	    view 
+	    returns (uint8[50])
+	{
         return games[_gameId].YDistribution;
     }
     
-    function gameNumberOfWinnerCoinIds(uint256 _gameId) public view returns (uint256) {
-        require(_gameId < games.length);
+    function gameNumberOfWinnerCoinIds(uint256 _gameId) 
+        hasGameId(_gameId)
+        public 
+        view 
+        returns (uint256)
+    {
         return games[_gameId].winnerCoinIds.length;
     }
     
-    function gameWinnerCoinIds(uint256 _gameId, uint256 _winnerId) public view returns (uint256) {
-        require(_gameId < games.length);
-        
+    function gameWinnerCoinIds(uint256 _gameId, uint256 _winnerId) 
+        hasGameId(_gameId)
+        public
+        view
+        returns (uint256)
+    {
         GameLogic.Instance storage game = games[_gameId];
         require(_winnerId < game.winnerCoinIds.length);
         
@@ -232,20 +253,22 @@ contract GamePool is Ownable, usingOraclize {
         }
     }
     
-    function isBetInformationHidden(uint256 _gameId) public view returns (bool) {
-        require(_gameId < games.length);
+    function isBetInformationHidden(uint256 _gameId) 
+        hasGameId(_gameId)
+        public
+        view
+        returns (bool)
+    {
         return GameLogic.isBetInformationHidden(games[_gameId]);
     }
     
-    function gameAwardAmount() public view returns (uint256) {
-        return address(this).balance.sub(oraclizeFee);
-    } 
-    
-    function bet(uint256 _gameId, uint256 _coinId) public payable {
+    function bet(uint256 _gameId, uint256 _coinId) 
+        hasGameId(_gameId)
+        hasCoinId(_coinId)
+        public 
+        payable
+    {
 	    require(msg.value >= MIN_BET);
-	    require(_gameId < games.length);
-	    require(_gameId < gameBets.length);
-	   
 	    
 	    GameLogic.Instance storage game = games[_gameId];
 	    GameLogic.GameBets storage bets = gameBets[_gameId];
@@ -253,16 +276,17 @@ contract GamePool is Ownable, usingOraclize {
 	    GameLogic.bet(game, bets, _coinId, txFeeReceiver);
 	}
 	
-	function fetchStartExRate(uint256 _gameId) public onlyOwner {
-	    // Check the game id.
-        require(_gameId < games.length);
-        
+	function fetchStartExRate(uint256 _gameId) 
+	    hasGameId(_gameId)
+        onlyOwner
+        public
+    {
         // Check the game state.
         GameLogic.Instance storage game = games[_gameId];
         require(GameLogic.state(game) == GameLogic.State.Created);
         
         // Check the tx fee amount.
-       require(address(this).balance >= oraclizeFee);
+        require(address(this).balance >= oraclizeFee);
         
         // Query all start exchange rate.
 		string memory url;
@@ -275,10 +299,11 @@ contract GamePool is Ownable, usingOraclize {
 		}
     }	
     
-    function fetchEndExRate(uint256 _gameId) public onlyOwner payable {
-        // Check the game id.
-        require(_gameId < games.length);
-        
+    function fetchEndExRate(uint256 _gameId) 
+        hasGameId(_gameId)
+        onlyOwner
+        public 
+    {
         // Check the game state.
         GameLogic.Instance storage game = games[_gameId];
         require(GameLogic.state(game) == GameLogic.State.Stop);
@@ -302,19 +327,17 @@ contract GamePool is Ownable, usingOraclize {
     }
     
     function close(uint256 _gameId) 
+        hasGameId(_gameId)
 	    onlyOwner 
 	    public
 	    returns (bool)
 	{
-	    require(_gameId < games.length);
-	    require(_gameId < gameBets.length);
-	    
-		GameLogic.Instance storage game = games[_gameId];
+	    GameLogic.Instance storage game = games[_gameId];
 		require(GameLogic.state(game) == GameLogic.State.WaitToClose);
 		
 		GameLogic.GameBets storage bets = gameBets[_gameId];
 		
-		GameLogic.tryClose(game, bets, gameAwardAmount());
+		GameLogic.tryClose(game, bets);
 		
 		if (game.isFinished) {
 		    emit GameClosed(_gameId);
@@ -340,14 +363,14 @@ contract GamePool is Ownable, usingOraclize {
 		return game.isFinished;
 	}
 	
-	function calculateAwardAmount(uint256 _gameId) public view returns (uint256) {
-	    require(_gameId < games.length);
-	    require(_gameId < gameBets.length);
-	    
+	function calculateAwardAmount(uint256 _gameId) 
+	    hasGameId(_gameId)
+	    public
+	    view
+	    returns (uint256)
+	{
 	    GameLogic.State queryGameState = gameState(_gameId);
-	    GameLogic.State nextGameState = gameState(_gameId.add(1));
-	    
-	    if (GameLogic.State.Closed == queryGameState && GameLogic.State.Open > nextGameState) {
+	    if (GameLogic.State.Closed == queryGameState) {
 	        GameLogic.Instance storage game = games[_gameId];
 		    GameLogic.GameBets storage bets = gameBets[_gameId];
 		
@@ -357,24 +380,22 @@ contract GamePool is Ownable, usingOraclize {
 	    }
 	}
 	
-	function getAwards(uint256 _gameId) public {
+	function getAwards(uint256 _gameId) hasGameId(_gameId) public {
 	    uint256 amount = calculateAwardAmount(_gameId);
 		if (0 < amount) {
-		    require(gameAwardAmount() >= amount);
-		    
-		    msg.sender.transfer(amount);
-		    
 		    GameLogic.GameBets storage bets = gameBets[_gameId];
-		    bets.isAwardTransfered[msg.sender] = true;
-		    
+		    require(bets.totalAwards.sub(bets.claimedAwards) >= amount);
+            
+            bets.isAwardTransfered[msg.sender] = true;
+            bets.claimedAwards = bets.claimedAwards.add(amount);
+            
+		    msg.sender.transfer(amount);
 		    emit SendAwards(_gameId, msg.sender, amount);
 		}
 	}
 	
-	function closeErrorGame(uint256 _gameId) public {
-        require(_gameId < games.length);
-	    
-	    GameLogic.Instance storage game = games[_gameId];
+	function closeErrorGame(uint256 _gameId) hasGameId(_gameId) public {
+        GameLogic.Instance storage game = games[_gameId];
 	    GameLogic.closeErrorGame(game);
 		
 		emit GameClosed(_gameId);
@@ -386,6 +407,23 @@ contract GamePool is Ownable, usingOraclize {
         oraclizeFee = 0;
         owner().transfer(amount);
     }
+    
+    function getUnclaimedAward(uint256 _gameId) 
+        hasGameId(_gameId) 
+        onlyOwner 
+        public
+    {
+        GameLogic.Instance storage game = games[_gameId];
+        require(game.closeTime + game.claimTimeAfterClose < now);
+        
+        GameLogic.GameBets storage bets = gameBets[_gameId];
+        
+	    uint256 amount = bets.totalAwards.sub(bets.claimedAwards);
+	    bets.claimedAwards = bets.totalAwards;
+	    
+	    owner().transfer(amount);
+	    emit GetUnclaimedAwards(_gameId, owner(), amount);
+	}
     
     function sendOraclizeFee() public payable {
         oraclizeFee = oraclizeFee.add(msg.value);

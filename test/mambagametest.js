@@ -149,6 +149,7 @@ contract('Mamba game front-end javascript', async function(accounts) {
 				, 600 + mambaGame.openTime.getTime() / 1000);
 			assert.equal(mambaGame.duration, 600000);
 			assert.equal(mambaGame.hiddenTimeLengthBeforeClose, 300000);
+			assert.equal(mambaGame.claimAwardTimeAfterClose, 2592000000);
 			assert.equal(mambaGame.Y, 39);
 			assert.equal(mambaGame.A, 10);
 			assert.equal(mambaGame.B, 20);
@@ -231,7 +232,9 @@ contract('Mamba game front-end javascript', async function(accounts) {
 		});
 		
 		it('Take Bets & close game.', async function () {
-			mambaGamePool.playerAddress = accounts[1];
+			mambaGamePool.playerAddress = accounts[3];
+			
+			let historyPrev = await mambaGamePool.getPlayerBetsHistory();
 			
 			assert.ok(mambaGamePool.numberOfGames > 0);
 			let gameId = mambaGamePool.numberOfGames - 1;
@@ -256,7 +259,7 @@ contract('Mamba game front-end javascript', async function(accounts) {
 				, 600]; // 20%
 			await contract.setEndExRate(gameId, endExRate);
 			await contract.setY(gameId, 10);
-			
+						
 			function waitForCloseStateChange() {
 				return new Promise(function (resolve, reject) {
 					if (mambaGame.state === 'Closed') {
@@ -297,19 +300,19 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			
 			// Do a longer operation to wait blockchain finished.
 			let history = await mambaGamePool.getPlayerBetsHistory();
-			assert.equal(history.length, 3);
-			assert.equal(history[0].gameId, gameId);
-			assert.equal(history[0].coinId, 0);
-			assert.equal(history[0].betAmount, '0.0199');
-			assert.ok(typeof history[0].timeStamp != 'undefined');
-			assert.equal(history[1].gameId, gameId);
-			assert.equal(history[1].coinId, 0);
-			assert.equal(history[1].betAmount, '0.00995');
-			assert.ok(typeof history[1].timeStamp != 'undefined');
-			assert.equal(history[2].gameId, gameId);
-			assert.equal(history[2].coinId, 1);
-			assert.equal(history[2].betAmount, '0.00995');
-			assert.ok(typeof history[2].timeStamp != 'undefined');
+			assert.equal(history.length - historyPrev.length, 3);
+			assert.equal(history[history.length - 3].gameId, gameId);
+			assert.equal(history[history.length - 3].coinId, 0);
+			assert.equal(history[history.length - 3].betAmount, '0.0199');
+			assert.ok(typeof history[history.length - 3].timeStamp != 'undefined');
+			assert.equal(history[history.length - 2].gameId, gameId);
+			assert.equal(history[history.length - 2].coinId, 0);
+			assert.equal(history[history.length - 2].betAmount, '0.00995');
+			assert.ok(typeof history[history.length - 2].timeStamp != 'undefined');
+			assert.equal(history[history.length - 1].gameId, gameId);
+			assert.equal(history[history.length - 1].coinId, 1);
+			assert.equal(history[history.length - 1].betAmount, '0.00995');
+			assert.ok(typeof history[history.length - 1].timeStamp != 'undefined');
 			
 			// Check balace.
 			let balanceAfter = await getBalance(mambaGamePool.playerAddress);
