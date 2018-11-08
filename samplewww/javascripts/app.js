@@ -172,7 +172,7 @@ window.addEventListener('load', function () {
 				
 				game.subscribe('ExrateUpdated', function (coinId, exrate) {
 					document.getElementById("coins-" + coinId + "-current-exrate").innerHTML = exrate;
-					let value = (game.coins[coinId].startExRate - exrate) * 100 / game.coins[coinId].startExRate;
+					let value = (exrate - game.coins[coinId].startExRate) * 100 / game.coins[coinId].startExRate;
 					document.getElementById("coins-" + coinId + "-current-value").innerHTML = value.toFixed(2) + '%';
 				});
 				
