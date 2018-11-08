@@ -472,7 +472,7 @@
 	}
 	
 	MambaGame.prototype.isBetInformationHidden = function () {
-		return this.openTime.getTime() + this.hiddenTimeLengthBeforeClose <= Date.now() 
+		return this.closeTime.getTime() - this.hiddenTimeLengthBeforeClose <= Date.now() 
 			&& this.closeTime.getTime() >= Date.now();
 	}
 	
@@ -675,7 +675,7 @@
 	
 	MambaGame.prototype.callbackForUpdateExrate = function (coinId, price) {
 		this.coins[coinId].currentExRate = price;
-		if (this.cb['ExrateUpdated']) {
+		if (this.cb['ExrateUpdated'] && (this.closeTIme.getTime() - this.hiddenTimeLengthBeforeClose > Date.now())) {
 			this.cb['ExrateUpdated'](coinId, price);
 		}
 	}
