@@ -675,7 +675,7 @@
 	
 	MambaGame.prototype.callbackForUpdateExrate = function (coinId, price) {
 		this.coins[coinId].currentExRate = price;
-		if (this.cb['ExrateUpdated'] && (this.closeTIme.getTime() - this.hiddenTimeLengthBeforeClose > Date.now())) {
+		if (this.cb['ExrateUpdated'] && (this.closeTime.getTime() - this.hiddenTimeLengthBeforeClose > Date.now())) {
 			this.cb['ExrateUpdated'](coinId, price);
 		}
 	}
