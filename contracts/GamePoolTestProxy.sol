@@ -16,7 +16,7 @@ contract GamePoolTestProxy is GamePool {
         GameLogic.Instance storage game = games[_gameId];
 	    for (uint256 i = 0; i < 5; ++i) {
 	        game.coins[i].startExRate = _rates[i];
-	        game.coins[i].timeStampOfStartExRate = now;
+	        game.coins[i].timeStampOfStartExRate = (_rates[i] == 0) ? 0 : now;
 	    }
 	    
 	    if (GameLogic.state(game) == GameLogic.State.Ready) {
@@ -33,7 +33,7 @@ contract GamePoolTestProxy is GamePool {
         GameLogic.Instance storage game = games[_gameId];
 	    for (uint256 i = 0; i < 5; ++i) {
 	        game.coins[i].endExRate = _rates[i];
-	        game.coins[i].timeStampOfEndExRate = now;
+	        game.coins[i].timeStampOfEndExRate = (_rates[i] == 0) ? 0 : now;
 	    }
 	    
 	    if (GameLogic.state(game) == GameLogic.State.WaitToClose) {

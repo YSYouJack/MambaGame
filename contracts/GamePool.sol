@@ -26,7 +26,7 @@ contract GamePool is Ownable, usingOraclize {
     
     uint256 public MIN_BET = 10 finney; // 0.01 ether.
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
-	uint256 public ORICALIZE_GAS_LIMIT = 150000;
+	uint256 public ORICALIZE_GAS_LIMIT = 100000;
 	uint256 public CLAIM_AWARD_TIME_AFTER_CLOSE = 30 days;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
@@ -66,8 +66,8 @@ contract GamePool is Ownable, usingOraclize {
         require(address(0) != _txFeeReceiver);
         txFeeReceiver = _txFeeReceiver;
         
-        //OAR = OraclizeAddrResolverI(0x0BffB729b30063E53A341ba6a05dfE8f817E7a53);
-        //emit LogAddr(oraclize_cbAddress());
+        OAR = OraclizeAddrResolverI(0x0BffB729b30063E53A341ba6a05dfE8f817E7a53);
+        emit LogAddr(oraclize_cbAddress());
     }
     
     function createNewGame(uint256 _openTime
@@ -340,6 +340,7 @@ contract GamePool is Ownable, usingOraclize {
 		GameLogic.tryClose(game, bets);
 		
 		if (game.isFinished) {
+		    GameLogic.calculateAwardForCoin(game, bets, bets.totalAwards);
 		    emit GameClosed(_gameId);
 		} else {
 		    game.Y = 0;

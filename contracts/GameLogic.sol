@@ -6,6 +6,7 @@ library GameLogic {
     using SafeMath for uint256;
     
     enum State { NotExists, Created, Ready, Open, Stop, WaitToClose, Closed, Error}
+    enum CompareResult { Equal, Less, Greater }
     
     struct Bets {
         uint256 betAmount;
@@ -72,18 +73,18 @@ library GameLogic {
 	    if (game.isFinished) {
 	        return State.Closed;
 	    } else if (now > game.closeTime) {
-	        if (0 == game.coins[0].startExRate || 
-	            0 == game.coins[1].startExRate ||
-	            0 == game.coins[2].startExRate ||
-	            0 == game.coins[3].startExRate ||
-	            0 == game.coins[4].startExRate)
+	        if (0 == game.coins[0].timeStampOfStartExRate || 
+	            0 == game.coins[1].timeStampOfStartExRate ||
+	            0 == game.coins[2].timeStampOfStartExRate ||
+	            0 == game.coins[3].timeStampOfStartExRate ||
+	            0 == game.coins[4].timeStampOfStartExRate)
 	        {
 	            return State.Error;
-	        } else if (0 != game.coins[0].endExRate && 
-	            0 != game.coins[1].endExRate &&
-	            0 != game.coins[2].endExRate &&
-	            0 != game.coins[3].endExRate &&
-	            0 != game.coins[4].endExRate &&
+	        } else if (0 != game.coins[0].timeStampOfEndExRate && 
+	            0 != game.coins[1].timeStampOfEndExRate &&
+	            0 != game.coins[2].timeStampOfEndExRate &&
+	            0 != game.coins[3].timeStampOfEndExRate &&
+	            0 != game.coins[4].timeStampOfEndExRate &&
 	            game.isYChoosed)
 	        {
 	            return State.WaitToClose;
@@ -91,11 +92,11 @@ library GameLogic {
 	            return State.Stop;
 	        }
 	    } else {
-	        if (0 != game.coins[0].startExRate && 
-	            0 != game.coins[1].startExRate &&
-	            0 != game.coins[2].startExRate &&
-	            0 != game.coins[3].startExRate &&
-	            0 != game.coins[4].startExRate)
+	        if (0 != game.coins[0].timeStampOfStartExRate && 
+	            0 != game.coins[1].timeStampOfStartExRate &&
+	            0 != game.coins[2].timeStampOfStartExRate &&
+	            0 != game.coins[3].timeStampOfStartExRate &&
+	            0 != game.coins[4].timeStampOfStartExRate)
 	        {
 	            if (now >= game.openTime) {
 	                return State.Open;
@@ -114,193 +115,111 @@ library GameLogic {
 	{
 		require(state(game) == State.WaitToClose);
 		
-		uint256[5] memory ranks;
+		uint256 largestIds = 0;
+	    uint256 smallestIds = 0;
+	    uint256 otherIds = 0;
 		
-		// Get largest and smallest rasing rate coins.
-	    int32 largestStart = game.coins[0].startExRate;
-	    int32 largestEnd = game.coins[0].endExRate;
-	    int32 start = game.coins[1].startExRate;
-		int32 end = game.coins[1].endExRate;
-	    int32 smallStart;
-		int32 smallEnd;
-
-	    if (isGreaterThan(start, end, largestStart, largestEnd)) {
-	        ranks[0] = 1;
-	        ranks[1] = 0;
-	        
-	        smallStart = largestStart;
-	        smallEnd = largestEnd;
-	        largestStart = start;
-	        largestEnd = end;
-	    } else {
-	        ranks[0] = 0;
-	        ranks[1] = 1;
-	        
-	        smallStart = start;
-	        smallEnd = end;
-	    }
-	    
-	    ranks[2] = 2;
-	    ranks[3] = 3;
-	    ranks[4] = 4;
-		
-		// Sorting.
-		for (uint256 i = 2; i < 5; ++i) {
-		    start = game.coins[i].startExRate;
-		    end = game.coins[i].endExRate;
+		uint256 i = 0;
+		CompareResult result;
+		for (; i < 5; ++i) {
+		    // Remove the orphan coins which cannot find data on Binance.
+		    if (game.coins[i].startExRate == 0 || game.coins[i].endExRate == 0) {
+		        continue;
+		    }
 		    
-		    if (isGreaterThan(start, end, largestStart, largestEnd)) {
-		        ranks[i] = ranks[0];
-		        ranks[0] = i;
-		        largestStart = start;
-		        largestEnd = end;
-		    } else if (isLessThan(start, end, smallStart, smallEnd)) {
-		        ranks[i] = ranks[1];
-		        ranks[1] = i;
-		        smallStart = start;
-		        smallEnd = end;
-		    } else if (isEqualTo(start, end, largestStart, largestEnd)) {
-		        if (bets.coinbets[ranks[0]].largestBetAmount < bets.coinbets[i].largestBetAmount) {
-		            ranks[i] = ranks[0];
-		            ranks[0] = i;
-		        }
-		    } else if (isEqualTo(start, end, smallStart, smallEnd)) {
-		        if (bets.coinbets[ranks[1]].largestBetAmount < bets.coinbets[i].largestBetAmount) {
-		            ranks[i] = ranks[1];
-		            ranks[1] = i;
-		        }
-		    }
-		}
-		
-		// Sort the largest/smallest coins by larest bets.
-		if (bets.coinbets[ranks[0]].largestBetAmount < bets.coinbets[ranks[1]].largestBetAmount) {
-		    uint256 tmp = ranks[0];
-		    ranks[0] = ranks[1];
-		    ranks[1] = tmp;
-		}
-		
-		// Sort the rest of coins by totalbets.
-		if (bets.coinbets[ranks[2]].totalBetAmount > bets.coinbets[ranks[3]].totalBetAmount) {
-		    if (bets.coinbets[ranks[4]].totalBetAmount > bets.coinbets[ranks[2]].totalBetAmount) {
-		        tmp = ranks[2];
-		        ranks[2] = ranks[4];
-		        ranks[4] = ranks[3];
-		        ranks[3] = tmp;
-		    } else if (bets.coinbets[ranks[4]].totalBetAmount > bets.coinbets[ranks[3]].totalBetAmount) {
-		        tmp = ranks[3];
-		        ranks[3] = ranks[4];
-		        ranks[4] = tmp;
-		    }
-		} else if (bets.coinbets[ranks[2]].totalBetAmount < bets.coinbets[ranks[3]].totalBetAmount) {
-		    if (bets.coinbets[ranks[4]].totalBetAmount <= bets.coinbets[ranks[2]].totalBetAmount) {
-		        tmp = ranks[2];
-		        ranks[2] = ranks[3];
-		        ranks[3] = tmp;
-		    } else if (bets.coinbets[ranks[4]].totalBetAmount <= bets.coinbets[ranks[3]].totalBetAmount) {
-		        tmp = ranks[2];
-		        ranks[2] = ranks[3];
-		        ranks[3] = ranks[4];
-		        ranks[4] = tmp;
+		    // Compare with the largest coin id.
+		    if (0 == (largestIds & 0x7)) {
+			    largestIds = i + 1;
+			    continue;
 		    } else {
-		        tmp = ranks[2];
-		        ranks[2] = ranks[4];
-		        ranks[4] = tmp;
+		        result = compare(game.coins[(largestIds & 0x7) - 1], game.coins[i]);
+		        if (CompareResult.Equal == result) {
+		            largestIds = pushToLargestOrSmallestIds(bets, largestIds, i);
+		            continue;
+		        } else if (CompareResult.Less == result) {
+		            if (0 == (smallestIds & 0x7)) {
+					    smallestIds = largestIds;
+				    } else {
+		                otherIds = pushToOtherIds(bets, otherIds, largestIds);
+				    }
+				    
+		            largestIds = i + 1;
+		            continue;
+		        }
 		    }
-		} else {
-		    if (bets.coinbets[ranks[4]].totalBetAmount > bets.coinbets[ranks[2]].totalBetAmount) {
-		        tmp = ranks[2];
-		        ranks[2] = ranks[4];
-		        ranks[4] = tmp;
+		    
+		    // Compare with the smallest coin id.
+		    if (0 == (smallestIds & 0x7)) {
+			    smallestIds = i + 1;
+			    continue;
+		    } else {
+		        result = compare(game.coins[(smallestIds & 0x7) - 1], game.coins[i]);
+		        if (CompareResult.Equal == result) {
+		            smallestIds = pushToLargestOrSmallestIds(bets, smallestIds, i);
+		            continue;
+		        } else if (CompareResult.Greater == result) {
+		            if (0 == (largestIds & 0x7)) {
+					    largestIds = smallestIds;
+				    } else {
+		                otherIds = pushToOtherIds(bets, otherIds, smallestIds);
+				    }
+		                
+		            smallestIds = i + 1;
+		            continue;
+		        }
 		    }
+		    
+		    // Assign to 'other' group.
+		    otherIds = pushToOtherIds(bets, otherIds, i + 1);
 		}
 		
-		// Decide the winner.
-		if (bets.coinbets[ranks[1]].largestBetAmount.add(game.minDiffBets) < bets.coinbets[ranks[0]].largestBetAmount) {
+		// Choose winners.
+		require(otherIds < 512);
+		
+		if (smallestIds == 0) {
+	    	if (largestIds != 0) {
+			    game.isFinished = true;
+		        convertTempIdsToWinnerIds(game, largestIds);
+		        return true;
+		    } else {
+			    return false;
+		    }
+    	}
+		
+		i = bets.coinbets[(largestIds & 0x7) - 1].largestBetAmount;
+		uint256 j = bets.coinbets[(smallestIds & 0x7) - 1].largestBetAmount;
+		
+		// Compare largest and smallest group.
+		if (i > j.add(game.minDiffBets)) {
 		    game.isFinished = true;
-		    game.winnerCoinIds.push(ranks[0]);
-		    
-            largestStart = game.coins[ranks[0]].startExRate;
-	        largestEnd = game.coins[ranks[0]].endExRate;
-	        
-	        for (i = 2; i < 5; ++i) {
-	            start = game.coins[ranks[i]].startExRate;
-		        end = game.coins[ranks[i]].endExRate;
-		        
-		        if (isEqualTo(largestStart, largestEnd, start, end)) {
-		            game.winnerCoinIds.push(ranks[i]);
-		        }
-	        }
+		    convertTempIdsToWinnerIds(game, largestIds);
+		} else if (j > i.add(game.minDiffBets)) {
+		    game.isFinished = true;
+		    convertTempIdsToWinnerIds(game, smallestIds);
 		} else {
-            start = game.coins[ranks[2]].startExRate;
-		    end = game.coins[ranks[2]].endExRate;
+		    // Compare other group.
+		    if (otherIds < 8 && otherIds != 0) {
+		        // sole winner.
+		        game.isFinished = true;
+		        convertTempIdsToWinnerIds(game, otherIds);
+		    } else if (otherIds >= 8 && otherIds != 0) {
+		        // compare.
+		        i = bets.coinbets[(otherIds & 0x7) - 1].totalBetAmount;
+		        j = bets.coinbets[((otherIds >> 3) & 0x7) - 1].totalBetAmount;
 		        
-		    if (isEqualTo(largestStart, largestEnd, start, end) || 
-		        isEqualTo(smallStart, smallEnd, start, end)) {
-		        
-		        start = game.coins[ranks[3]].startExRate;
-		        end = game.coins[ranks[3]].endExRate;
-		        
-                if (isEqualTo(largestStart, largestEnd, start, end) || 
-		            isEqualTo(smallStart, smallEnd, start, end)) {
-
-		            start = game.coins[ranks[4]].startExRate;
-		            end = game.coins[ranks[4]].endExRate;
-		            
-		            if (!isEqualTo(largestStart, largestEnd, start, end) && 
-		                !isEqualTo(smallStart, smallEnd, start, end)) {
-		                
-		                game.isFinished = true;
-		                game.winnerCoinIds.push(ranks[4]);
-		            }
-		        } else {
-		            start = game.coins[ranks[4]].startExRate;
-		            end = game.coins[ranks[4]].endExRate;
-		            
-		            if (isEqualTo(largestStart, largestEnd, start, end) ||
-		                isEqualTo(smallStart, smallEnd, start, end)) {
-		                
-		                game.isFinished = true;
-		                game.winnerCoinIds.push(ranks[3]);
+		        if (i > j.add(game.minDiffBets)) {
+		            game.isFinished = true;
+		            game.winnerCoinIds.push((otherIds & 0x7) - 1);
+		        } else if (otherIds >= 128) {
+		            i = bets.coinbets[((otherIds >> 6) & 0x7) - 1].totalBetAmount;
+		            if (j > i.add(game.minDiffBets)) {
+		                convertTempIdsToWinnerIds(game, otherIds & 0x3f);
 		            } else {
-		                if (bets.coinbets[ranks[4]].totalBetAmount.add(game.minDiffBets) < bets.coinbets[ranks[3]].totalBetAmount) {
-		                    game.isFinished = true;
-		                    game.winnerCoinIds.push(ranks[3]);
-	                    }
+		                convertTempIdsToWinnerIds(game, otherIds);
 		            }
-		        }
-		    } else {
-		        
-		        start = game.coins[ranks[3]].startExRate;
-		        end = game.coins[ranks[3]].endExRate;
-		        
-                if (isEqualTo(largestStart, largestEnd, start, end) || 
-		            isEqualTo(smallStart, smallEnd, start, end)) {
-
-		            start = game.coins[ranks[4]].startExRate;
-		            end = game.coins[ranks[4]].endExRate;
-		            
-		            if (isEqualTo(largestStart, largestEnd, start, end) ||
-		                isEqualTo(smallStart, smallEnd, start, end)) {
-		                
-		                game.isFinished = true;
-		                game.winnerCoinIds.push(ranks[2]);
-		            } else {
-		                if (bets.coinbets[ranks[4]].totalBetAmount.add(game.minDiffBets) < bets.coinbets[ranks[2]].totalBetAmount) {
-		                    game.isFinished = true;
-		                    game.winnerCoinIds.push(ranks[2]);
-	                    }
-		            }
-		        } else {
-		            if (bets.coinbets[ranks[3]].totalBetAmount.add(game.minDiffBets) < bets.coinbets[ranks[2]].totalBetAmount) {
-		                game.isFinished = true;
-		                game.winnerCoinIds.push(ranks[2]);
-	                }
+		            game.isFinished = true;
 		        }
 		    }
-		}
-		
-		if (game.isFinished) {
-		    calculateAwardForCoin(game, bets, bets.totalAwards);
 		}
 		
 		return game.isFinished;
@@ -438,27 +357,76 @@ library GameLogic {
 	    }
 	}
 	
-	function isEqualTo(int32 start0, int32 end0, int32 start1, int32 end1) 
+	function compare(Coin storage coin0, Coin storage coin1) 
 	    public
-	    pure
-	    returns (bool)
+	    view
+	    returns (CompareResult)
 	{
-	    return ((end0 - start0) * start1) == ((end1 - start1) * start0);
+	    int32 value0 = (coin0.endExRate - coin0.startExRate) * coin1.startExRate;
+	    int32 value1 = (coin1.endExRate - coin1.startExRate) * coin0.startExRate;
+	    
+	    if (value0 == value1) {
+	        return CompareResult.Equal;
+	    } else if (value0 < value1) {
+	        return CompareResult.Less;
+	    } else {
+	        return CompareResult.Greater;
+	    }
 	}
 	
-	function isGreaterThan(int32 start0, int32 end0, int32 start1, int32 end1) 
+	function pushToLargestOrSmallestIds(GameBets storage bets
+	    , uint256 currentIds
+	    , uint256 newId
+	)
 	    public
-	    pure
-	    returns (bool)
+	    view
+	    returns (uint256)
 	{
-	    return ((end0 - start0) * start1) > ((end1 - start1) * start0);
+	    require(currentIds < 2048); // maximum capacity is 5.
+
+	    if (currentIds == 0) {
+		    return newId + 1;
+	    } else {
+		    uint256 id = (currentIds & 0x7) - 1;
+		    if (bets.coinbets[newId].largestBetAmount >= bets.coinbets[id].largestBetAmount) {
+			    return (currentIds << 3) | (newId + 1);
+		    } else {
+			    return (id + 1) | (pushToLargestOrSmallestIds(bets, currentIds >> 3, newId) << 3);
+		    }
+    	}
 	}
 	
-	function isLessThan(int32 start0, int32 end0, int32 start1, int32 end1) 
+	function pushToOtherIds(GameBets storage bets, uint256 currentIds, uint256 newIds)
 	    public
-	    pure
-	    returns (bool)
-    {
-	    return ((end0 - start0) * start1) < ((end1 - start1) * start0);
+	    view
+	    returns (uint256)
+	{
+	    require(currentIds < 2048);
+	    require(newIds < 2048 && newIds > 0);
+
+	    if (newIds >= 8) {
+		    return pushToOtherIds(bets
+		        , pushToOtherIds(bets, currentIds, newIds >> 3)
+				, newIds & 0x7);
+	    } else {
+		    if (currentIds == 0) {
+			    return newIds;
+		    } else {
+			    uint256 id = (currentIds & 0x7) - 1;
+			    if (bets.coinbets[newIds - 1].totalBetAmount >= bets.coinbets[id].totalBetAmount) {
+				    return (currentIds << 3) | newIds;
+			    } else {
+				    return (id + 1) | (pushToOtherIds(bets, currentIds >> 3, newIds) << 3);
+			    }
+		    }
+	    }
+	}
+	
+	function convertTempIdsToWinnerIds(Instance storage game, uint256 ids) public
+	{
+	    if (ids > 0) {
+	        game.winnerCoinIds.push((ids & 0x7) - 1);
+	        convertTempIdsToWinnerIds(game, ids >> 3);
+	    }
 	}
 }

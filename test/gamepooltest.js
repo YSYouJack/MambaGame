@@ -49,7 +49,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		assert.equal(oraclizeFee, 0);
 		
 		let ORICALIZE_GAS_LIMIT = await game.ORICALIZE_GAS_LIMIT.call();
-		assert.equal(ORICALIZE_GAS_LIMIT, 150000);
+		assert.equal(ORICALIZE_GAS_LIMIT, 100000);
 		
 		// Test MIN_BET and HIDDEN_TIME_BEFORE_CLOSE.
 		let MIN_BET = await game.MIN_BET.call();
@@ -301,9 +301,9 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Test the coin result.
 		for (let i = 0; i < 5; ++i) {
 			let coin = await game.gameCoinData.call(gameId, i);
-			assert.equal(coin[1], startExRate[i]); // startExRate
+			assert.equal(coin[1], startExRate[i]); 		// startExRate
 			assert.ok(coin[2] != 0);                    // timeStampOfStartExRate
-			assert.equal(coin[3], endExRate[i]);   // endExRate
+			assert.equal(coin[3], endExRate[i]);   		// endExRate
 			assert.ok(coin[4] != 0);                    // timeStampOfEndExRate
 		}
 		
@@ -345,8 +345,6 @@ contract('GamePoolTestProxy', function(accounts) {
 		let awardsFromContract0 = await game.calculateAwardAmount(gameId, {from: accounts[7]});
 		let awardsFromContract1 = await game.calculateAwardAmount(gameId, {from: accounts[8]});
 		let awardsFromContract2 = await game.calculateAwardAmount(gameId, {from: accounts[9]});
-		
-		console.log(awardsFromContract0.toString());
 		
 		assert.ok(awardsFromContract0.eq(awards0));
 		assert.ok(awardsFromContract1.eq(awards1));
