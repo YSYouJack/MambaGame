@@ -429,4 +429,28 @@ library GameLogic {
 	        convertTempIdsToWinnerIds(game, ids >> 3);
 	    }
 	}
+	
+	function utf8ToUint(byte char) public pure returns (uint256) {
+        uint256 utf8Num = uint256(char);
+        if (utf8Num > 47 && utf8Num < 58) {
+            return utf8Num;
+        } else if (utf8Num > 64 && utf8Num < 91) {
+            return utf8Num;
+        } else {
+            revert();
+        }
+    }
+    
+    function encodeCoinName(string str) pure public returns (bytes32) {
+        bytes memory bString = bytes(str);
+        require(bString.length <= 32);
+        
+        uint256 retVal = 0;
+        uint256 offset = 248;
+        for (uint256 i = 0; i < bString.length; ++i) {
+            retVal |= utf8ToUint(bString[i]) << offset;
+            offset -= 8;
+        }
+        return bytes32(retVal);
+    }
 }

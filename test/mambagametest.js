@@ -45,7 +45,7 @@ async function setOpenCloseTime(gameId, openTime, closeTime, mambaGame) {
 }
 
 contract('Mamba game front-end javascript', async function(accounts) {
-	/*
+	
 	describe("Mamba game pool", async function () {
 		it('Init parameters', async function() {
 			//let contract = await GamePool.GamePoolTestProxy();
@@ -102,7 +102,6 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			mambaGamePool.close();
 		});
 	});
-	*/
 
 	describe("Mamba game", async function () {
 		this.startExRate = [100, 200, 300, 400, 500];
@@ -126,7 +125,6 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			await createNewTestGame(accounts);
 		});
 		
-		/*
 		it('Get game', async function () {
 			assert.ok(mambaGamePool.numberOfGames > 0);
 			let gameId = mambaGamePool.numberOfGames - 1;
@@ -233,12 +231,12 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			
 			mambaGame.close();
 		});
-		*/
+		
 		it('Take Bets & close game.', async function () {
 			
 			mambaGamePool.playerAddress = accounts[3];
 			
-			//let historyPrev = await mambaGamePool.getPlayerBetsHistory();
+			let historyPrev = await mambaGamePool.getPlayerBetsHistory();
 			
 			assert.ok(mambaGamePool.numberOfGames > 0);
 			let gameId = mambaGamePool.numberOfGames - 1;
@@ -302,7 +300,6 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			let balanceBefore = await getBalance(mambaGamePool.playerAddress);				
 			await mambaGame.getAwards();
 			
-			/*
 			// Do a longer operation to wait blockchain finished.
 			let history = await mambaGamePool.getPlayerBetsHistory();
 			assert.equal(history.length - historyPrev.length, 3);
@@ -331,7 +328,7 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			assert.equal(mambaGame.state, 'Closed');
 			assert.equal(mambaGame.winnerCoinIds.length, 1);
 			assert.equal(mambaGame.winnerCoinIds[0], 0);
-			*/
+			
 			mambaGame.close();
 		});
 	});

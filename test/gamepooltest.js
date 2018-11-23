@@ -49,14 +49,24 @@ contract('GamePoolTestProxy', function(accounts) {
 		assert.equal(oraclizeFee, 0);
 		
 		let ORICALIZE_GAS_LIMIT = await game.ORICALIZE_GAS_LIMIT.call();
-		assert.equal(ORICALIZE_GAS_LIMIT, 100000);
+		assert.equal(ORICALIZE_GAS_LIMIT, 120000);
 		
-		// Test MIN_BET and HIDDEN_TIME_BEFORE_CLOSE.
 		let MIN_BET = await game.MIN_BET.call();
 		assert.ok(MIN_BET.eq(web3.toWei("10", "finney")));
 		
 		let HIDDEN_TIME_BEFORE_CLOSE = await game.HIDDEN_TIME_BEFORE_CLOSE.call();
 		assert.equal(HIDDEN_TIME_BEFORE_CLOSE, 300);
+		
+		let CLAIM_AWARD_TIME_AFTER_CLOSE = await game.CLAIM_AWARD_TIME_AFTER_CLOSE.call();
+		assert.equal(CLAIM_AWARD_TIME_AFTER_CLOSE, 2592000);
+		
+		let packedData = await game.packedCommonData.call();
+		assert.equal(packedData.length, 5);
+		assert.equal(packedData[0], txFeeReceiver);
+		assert.ok(packedData[1].eq(MIN_BET));
+		assert.ok(packedData[2].eq(HIDDEN_TIME_BEFORE_CLOSE));
+		assert.ok(packedData[3].eq(CLAIM_AWARD_TIME_AFTER_CLOSE));
+		assert.ok(packedData[4].eq(numberOfGames));
 	});
 	
 	it("Send & withdraw oraclize fee", async function () {
@@ -95,6 +105,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		let gameData = await game.games.call(0);
 		assert.equal(gameData.length, 13);
 		
+		// Test game data from 'games' getter.
 		// Game id.
 		assert.equal(gameData[0], 0);
 		
@@ -124,13 +135,26 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		// Minimum difference bets.
 		assert.equal(gameData[12], web3.toWei("10", "finney"));	
-
-		// Test Y Distributions.
-		let yDist = await game.gameYDistribution.call(0);
-		assert.equal(yDist.length, 50);
+		
+		// Test game data from 'gamePackedCommonData' getter.
+		gameData = await game.gamePackedCommonData.call(0);
+		assert.equal(gameData.length, 11);
+		assert.ok(gameData[0].eq(openingTime));
+		assert.ok(gameData[1].eq(closingTime));
+		assert.ok(gameData[2].eq(duration));
+		
+		assert.equal(gameData[3].length, 50);
 		for (let i = 0; i < 50; ++i) {
-			assert.equal(yDist[i], (i % 10) + 1);
+			assert.equal(gameData[3][i], (i % 10) + 1);
 		}
+		
+		assert.ok(gameData[4].isZero());  // Y
+		assert.ok(gameData[5].eq(10));    // A
+		assert.ok(gameData[6].eq(20));    // B
+		assert.ok(gameData[7].eq(1));     // state
+		assert.ok(gameData[8].isZero());  // winnerMasks
+		assert.ok(gameData[9].eq(5));     // txFee
+		assert.ok(gameData[10].eq(web3.toWei("10", "finney"))); // minDiffBets
 		
 		// Test coins.
 		for (let i = 0; i < 5; ++i) {
@@ -156,6 +180,40 @@ contract('GamePoolTestProxy', function(accounts) {
 			assert.equal(coin[4], 0); 	   // timeStampOfEndExRate	
 		}
 		
+		// Test coins from packed output.
+		let packedCoinData = await game.gamePackedCoinData.call(0);
+		assert.equal(packedCoinData.length, 5);
+		assert.equal(packedCoinData[0].length, 5);
+		assert.equal(packedCoinData[1].length, 5);
+		assert.equal(packedCoinData[2].length, 5);
+		assert.equal(packedCoinData[3].length, 5);
+		assert.equal(packedCoinData[4].length, 5);
+		assert.equal(web3.toAscii(packedCoinData[0][0]).replace(/\0/g, ''), "BTC"); // Name
+		assert.equal(web3.toAscii(packedCoinData[0][1]).replace(/\0/g, ''), "LTC");
+		assert.equal(web3.toAscii(packedCoinData[0][2]).replace(/\0/g, ''), "BCC");
+		assert.equal(web3.toAscii(packedCoinData[0][3]).replace(/\0/g, ''), "ETH");
+		assert.equal(web3.toAscii(packedCoinData[0][4]).replace(/\0/g, ''), "ETC");
+		assert.equal(packedCoinData[1][0], 0); // timeStampOfStartExRate
+		assert.equal(packedCoinData[1][1], 0);
+		assert.equal(packedCoinData[1][2], 0);
+		assert.equal(packedCoinData[1][3], 0);
+		assert.equal(packedCoinData[1][4], 0);
+		assert.equal(packedCoinData[2][0], 0); // timeStampOfEndExRate
+		assert.equal(packedCoinData[2][1], 0);
+		assert.equal(packedCoinData[2][2], 0);
+		assert.equal(packedCoinData[2][3], 0);
+		assert.equal(packedCoinData[2][4], 0);
+		assert.equal(packedCoinData[3][0], 0); // startExRate
+		assert.equal(packedCoinData[3][1], 0);
+		assert.equal(packedCoinData[3][2], 0);
+		assert.equal(packedCoinData[3][3], 0);
+		assert.equal(packedCoinData[3][4], 0);
+		assert.equal(packedCoinData[4][0], 0); // endExRate
+		assert.equal(packedCoinData[4][1], 0);
+		assert.equal(packedCoinData[4][2], 0);
+		assert.equal(packedCoinData[4][3], 0);
+		assert.equal(packedCoinData[4][4], 0);
+		
 		// getCoinBetData;
 		for (let i = 0; i < 5; ++i) {
 			let coinbets = await game.gameBetData.call(0, i);
@@ -164,9 +222,25 @@ contract('GamePoolTestProxy', function(accounts) {
 			assert.ok(coinbets[2].isZero()); // numberOfBets
 		}
 		
-		// Test winner mask.
+		// Test bet data from packed output.
+		let packedBetData = await game.gamePackedBetData.call(0);
+		assert.equal(packedBetData.length, 3);
+		assert.equal(packedBetData[0].length, 5);
+		assert.equal(packedBetData[1].length, 5);
+		assert.equal(packedBetData[2].length, 5);
+		for (let i = 0; i < 3; ++i) {
+			for (let j = 0; j < 5; ++j) {
+				assert.ok(packedBetData[i][j].isZero());
+			}
+		}
+		
+		// Test winner ids.
 		let numberOfWinnerIds = await game.gameNumberOfWinnerCoinIds(0);
-		assert.equal(numberOfWinnerIds, 0);		
+		assert.equal(numberOfWinnerIds, 0);
+		
+		// Test winner mask.
+		let winnerMask = await game.gameWinnerMask(0);
+		assert.equal(winnerMask, 0);
 	});
 	
 	it("Game State", async function () {

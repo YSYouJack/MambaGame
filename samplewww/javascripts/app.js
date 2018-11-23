@@ -100,7 +100,7 @@ window.addEventListener('load', function () {
 			event.preventDefault();
 			
 			let gameId = parseInt(event.currentTarget.value);
-			if (typeof gameId === 'undefined') {
+			if (typeof gameId === 'undefined' || isNaN(gameId) || (game && gameId == game.id)) {
 				return;
 			}
 			
@@ -146,6 +146,13 @@ window.addEventListener('load', function () {
 					document.getElementById("coins-" + i + "-total-bets").innerHTML = game.coins[i].totalBets;
 					document.getElementById("coins-" + i + "-largest-bets").innerHTML = game.coins[i].largestBets;
 					document.getElementById("coins-" + i + "-number-of-bets").innerHTML = game.coins[i].numberOfBets;
+					
+					if (0 != game.coins[i].endExRate) {
+						document.getElementById("coins-" + i + "-current-value").innerHTML 
+							= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate).toFixed(2) + '%';
+					} else {
+						document.getElementById("coins-" + i + "-current-value").innerHTML = "";
+					}
 				}
 				
 				// Subscribe an event for on game state changed. The detail explanation please goto https://github.com/YSYouJack/MambaGame/blob/master/doc/GamePool_Contract_Operations.md .
@@ -163,6 +170,13 @@ window.addEventListener('load', function () {
 							updateTimeStamp("coins-" + i + "-start-exrate-time", game.coins[i].timeStampOfStartExRate);
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 							updateTimeStamp("coins-" + i + "-end-exrate-time", game.coins[i].timeStampOfEndExRate);
+							
+							if (0 != game.coins[i].endExRate) {
+								document.getElementById("coins-" + i + "-current-value").innerHTML 
+									= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate).toFixed(2) + '%';
+							} else {
+								document.getElementById("coins-" + i + "-current-value").innerHTML = "";
+							}
 						}
 						
 						// Player can only bets in `Open` state.
@@ -181,6 +195,15 @@ window.addEventListener('load', function () {
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-end-exrate").innerHTML = game.coins[i].endExRate;
 							updateTimeStamp("coins-" + i + "-end-exrate-time", game.coins[i].timeStampOfEndExRate);
+							
+							if (0 != game.coins[i].endExRate) {
+								document.getElementById("coins-" + i + "-current-value").innerHTML 
+									= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate).toFixed(2) + '%';
+								document.getElementById("coins-" + i + "-current-exrate").innerHTML = "";
+							} else {
+								document.getElementById("coins-" + i + "-current-value").innerHTML = "";
+								document.getElementById("coins-" + i + "-current-exrate").innerHTML = "";
+							}
 						}
 						document.getElementById("game-y").innerHTML = game.Y;
 						document.getElementById("bet-form-submit-btn").disabled = true;

@@ -26,7 +26,7 @@ contract GamePool is Ownable, usingOraclize {
     
     uint256 public MIN_BET = 10 finney; // 0.01 ether.
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
-	uint256 public ORICALIZE_GAS_LIMIT = 100000;
+	uint256 public ORICALIZE_GAS_LIMIT = 120000;
 	uint256 public CLAIM_AWARD_TIME_AFTER_CLOSE = 30 days;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
@@ -66,8 +66,24 @@ contract GamePool is Ownable, usingOraclize {
         require(address(0) != _txFeeReceiver);
         txFeeReceiver = _txFeeReceiver;
         
-        OAR = OraclizeAddrResolverI(0x0BffB729b30063E53A341ba6a05dfE8f817E7a53);
-        emit LogAddr(oraclize_cbAddress());
+        //OAR = OraclizeAddrResolverI(0x0BffB729b30063E53A341ba6a05dfE8f817E7a53);
+        //emit LogAddr(oraclize_cbAddress());
+    }
+    
+    function packedCommonData() 
+        public 
+        view 
+        returns (address _txFeeReceiver
+            , uint256 _minimumBets
+            , uint256 _hiddenTimeLengthBeforeClose
+	        , uint256 _claimAwardTimeAfterClose
+	        , uint256 _numberOfGames)
+    {
+        _txFeeReceiver = txFeeReceiver;
+        _minimumBets = MIN_BET;
+        _hiddenTimeLengthBeforeClose = HIDDEN_TIME_BEFORE_CLOSE;
+        _claimAwardTimeAfterClose = CLAIM_AWARD_TIME_AFTER_CLOSE;
+        _numberOfGames = games.length;
     }
     
     function createNewGame(uint256 _openTime
@@ -176,6 +192,52 @@ contract GamePool is Ownable, usingOraclize {
 		emit GameCreated(game.id);
 	}
 	
+	function gamePackedCommonData(uint256 _gameId)
+	    hasGameId(_gameId)
+	    public
+	    view
+	    returns (uint256 openTime
+	        , uint256 closeTime
+	        , uint256 duration
+	        , uint8[50] YDistribution
+	        , uint8 Y
+	        , uint8 A
+	        , uint8 B
+	        , uint8 state
+	        , uint8 winnerMasks
+	        , uint16 txFee
+	        , uint256 minDiffBets)
+	{
+	    GameLogic.Instance storage game = games[_gameId];
+	    
+	    openTime = game.openTime;
+	    closeTime = game.closeTime;
+	    duration = game.duration;
+	    YDistribution = game.YDistribution;
+	    Y = game.Y;
+	    A = game.A;
+	    B = game.B;
+	    state = uint8(GameLogic.state(game));
+	    txFee = game.txFee;
+	    minDiffBets = game.minDiffBets;
+	    
+	    winnerMasks = gameWinnerMask(_gameId);
+	}
+	
+	function gameWinnerMask(uint256 _gameId)
+	    hasGameId(_gameId)
+	    public
+	    view
+	    returns (uint8 winnerMasks)
+	{
+	    GameLogic.Instance storage game = games[_gameId];
+	    
+	    winnerMasks = 0;
+	    for (_gameId = 0; _gameId < game.winnerCoinIds.length; ++_gameId) {
+	        winnerMasks |= uint8(1 << (game.winnerCoinIds[_gameId] + 1));
+	    }
+	}
+	
 	function gameCoinData(uint256 _gameId, uint256 _coinId)
 	    hasGameId(_gameId)
 	    hasCoinId(_coinId)
@@ -191,6 +253,27 @@ contract GamePool is Ownable, usingOraclize {
 	    timeStampOfStartExRate = game.coins[_coinId].timeStampOfStartExRate;
 	    endExRate = game.coins[_coinId].endExRate;
 	    timeStampOfEndExRate = game.coins[_coinId].timeStampOfEndExRate;
+	}
+	
+	function gamePackedCoinData(uint256 _gameId)
+	    hasGameId(_gameId)
+	    public 
+	    view 
+	    returns (bytes32[5] encodedName
+	        , uint256[5] timeStampOfStartExRate
+	        , uint256[5] timeStampOfEndExRate
+	        , int32[5] startExRate
+	        , int32[5] endExRate)
+	{
+	    GameLogic.Instance storage game = games[_gameId];
+	    
+	    for (uint256 i = 0 ; i < 5; ++i) {
+	        encodedName[i] = GameLogic.encodeCoinName(game.coins[i].name);
+	        startExRate[i] = game.coins[i].startExRate;
+	        timeStampOfStartExRate[i] = game.coins[i].timeStampOfStartExRate;
+	        endExRate[i] = game.coins[i].endExRate;
+	        timeStampOfEndExRate[i] = game.coins[i].timeStampOfEndExRate;
+	    }
 	}
 	
 	function gameBetData(uint256 _gameId, uint256 _coinId)
@@ -211,17 +294,32 @@ contract GamePool is Ownable, usingOraclize {
 	    }
 	}
 	
-	function numberOfGames() public view returns (uint256) {
-        return games.length;
-    }
-    
-    function gameYDistribution(uint256 _gameId) 
-        hasGameId(_gameId)
+	function gamePackedBetData(uint256 _gameId)
+	    hasGameId(_gameId)
 	    public 
 	    view 
-	    returns (uint8[50])
+	    returns (uint256[5] totalBets
+	        , uint256[5] largestBets
+	        , uint256[5] numberOfBets)
 	{
-        return games[_gameId].YDistribution;
+	    GameLogic.Instance storage game = games[_gameId];
+	    GameLogic.GameBets storage bets = gameBets[_gameId];
+	    
+	    for (uint256 i = 0; i < 5; ++i) {
+	        if (GameLogic.isBetInformationHidden(game)) {
+	            totalBets[i] = largestBets[i] = numberOfBets[i] = 0;
+	        } else {
+	            GameLogic.CoinBets storage c = bets.coinbets[i];
+	            
+	            totalBets[i] = c.totalBetAmount;
+	            largestBets[i] = c.largestBetAmount;
+	            numberOfBets[i] = c.bets.length;
+	        }
+	    }
+	}
+	
+	function numberOfGames() public view returns (uint256) {
+        return games.length;
     }
     
     function gameNumberOfWinnerCoinIds(uint256 _gameId) 
