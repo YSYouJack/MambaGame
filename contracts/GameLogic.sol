@@ -43,6 +43,7 @@ library GameLogic {
 	    uint256 duration;
 	    uint256 hiddenTimeBeforeClose;
 	    uint256 claimTimeAfterClose;
+	    uint256 maximumFetchingTimeForEndExRate;
 	    
 	    uint8[50] YDistribution;
 	    uint8 Y;
@@ -61,43 +62,64 @@ library GameLogic {
 	struct GameBets {
 	    CoinBets[5] coinbets;
 	    mapping (address => bool) isAwardTransfered;
+	    mapping (address => bool) isRefunded;
 	    uint256 totalAwards;
 	    uint256 claimedAwards;
+	    uint256 claimedRefunds;
 	}
 	
 	event CoinBet(uint256 indexed gameId, uint256 coinId, address player, uint256 amount);
 	event CoinLargestBetChanged(uint256 indexed gameId, uint256 coinId, uint256 amount);
 	event SendTxFee(address receiver, uint256 feeAmount);
 	
-	function state(Instance storage game) public view returns (State) {
+	function isEndExRateAndYFetched(Instance storage game) 
+	    public
+	    view
+	    returns (bool)
+	{
+	    return (0 != game.coins[0].endExRate && 
+	            0 != game.coins[1].endExRate &&
+	            0 != game.coins[2].endExRate &&
+	            0 != game.coins[3].endExRate &&
+	            0 != game.coins[4].endExRate &&
+	            game.isYChoosed);
+	}
+	
+	function isStartExRateFetched(Instance storage game) 
+	    public
+	    view
+	    returns (bool)
+	{
+	    return (0 != game.coins[0].startExRate && 
+	            0 != game.coins[1].startExRate &&
+	            0 != game.coins[2].startExRate &&
+	            0 != game.coins[3].startExRate &&
+	            0 != game.coins[4].startExRate);
+	}
+	
+	function state(Instance storage game, GameBets storage bets) 
+	    public 
+	    view 
+	    returns (State)
+	{
 	    if (game.isFinished) {
 	        return State.Closed;
-	    } else if (now > game.closeTime) {
-	        if (0 == game.coins[0].timeStampOfStartExRate || 
-	            0 == game.coins[1].timeStampOfStartExRate ||
-	            0 == game.coins[2].timeStampOfStartExRate ||
-	            0 == game.coins[3].timeStampOfStartExRate ||
-	            0 == game.coins[4].timeStampOfStartExRate)
-	        {
+	    } else if (now > game.closeTime.add(game.maximumFetchingTimeForEndExRate)) {
+	        if (!isEndExRateAndYFetched(game)) {
 	            return State.Error;
-	        } else if (0 != game.coins[0].timeStampOfEndExRate && 
-	            0 != game.coins[1].timeStampOfEndExRate &&
-	            0 != game.coins[2].timeStampOfEndExRate &&
-	            0 != game.coins[3].timeStampOfEndExRate &&
-	            0 != game.coins[4].timeStampOfEndExRate &&
-	            game.isYChoosed)
-	        {
+	        } else {
+	            return State.WaitToClose;
+	        }
+	    } else if (now > game.closeTime) {
+	        if (!isStartExRateFetched(game)) {
+	            return State.Error;
+	        } else if (isEndExRateAndYFetched(game) || 0 == bets.totalAwards) {
 	            return State.WaitToClose;
 	        } else {
 	            return State.Stop;
 	        }
 	    } else {
-	        if (0 != game.coins[0].timeStampOfStartExRate && 
-	            0 != game.coins[1].timeStampOfStartExRate &&
-	            0 != game.coins[2].timeStampOfStartExRate &&
-	            0 != game.coins[3].timeStampOfStartExRate &&
-	            0 != game.coins[4].timeStampOfStartExRate)
-	        {
+	        if (isStartExRateFetched(game)) {
 	            if (now >= game.openTime) {
 	                return State.Open;
 	            } else {
@@ -113,7 +135,7 @@ library GameLogic {
 	    public 
 	    returns (bool) 
 	{
-		require(state(game) == State.WaitToClose);
+		require(state(game, bets) == State.WaitToClose);
 		
 		uint256 largestIds = 0;
 	    uint256 smallestIds = 0;
@@ -225,18 +247,11 @@ library GameLogic {
 		return game.isFinished;
 	}
 	
-	function closeErrorGame(Instance storage game)
-	    public 
-	{
-        require(state(game) == State.Error);
-        game.isFinished = true;
-	}
-	
 	function bet(Instance storage game, GameBets storage gameBets, uint256 coinId, address txFeeReceiver)
 	    public 
 	{
 	    require(coinId < 5);
-	    require(state(game) == State.Open);
+	    require(state(game, gameBets) == State.Open);
 	    require(address(0) != txFeeReceiver && address(this) != txFeeReceiver);
 	    
 	    uint256 txFeeAmount = msg.value.mul(game.txFee).div(1000);
@@ -285,7 +300,7 @@ library GameLogic {
     ) 
         public
     {
-        require(state(game) == State.Closed);
+        require(state(game, bets) == State.Closed);
         awardAmount = awardAmount.div(game.winnerCoinIds.length);
         
         for (uint256 i = 0; i < game.winnerCoinIds.length; ++i) {
@@ -325,7 +340,7 @@ library GameLogic {
 	    view 
 	    returns (uint256 amount)
 	{
-	    require(state(game) == State.Closed);
+	    require(state(game, bets) == State.Closed);
 	    require(0 < game.winnerCoinIds.length);
 	    
 	    if (bets.isAwardTransfered[msg.sender]) {
@@ -353,6 +368,31 @@ library GameLogic {
 	            if (b.betAmount == c.largestBetAmount) {
 	                amount = amount.add(c.awardAmountForLargestBetPlayers);
 	            }
+	        }
+	    }
+	}
+	
+	function calculateRefundAmount(Instance storage game, GameBets storage bets)
+	    public 
+	    view 
+	    returns (uint256 amount)
+	{
+	    require(state(game, bets) == State.Error);
+	    amount = 0;
+	    
+	    if (bets.isRefunded[msg.sender]) {
+            return 0;
+        } else if (game.closeTime + game.claimTimeAfterClose < now) {
+            return 0;
+        }
+	    
+	    for (uint256 i = 0; i < 5; ++i) {
+	        CoinBets storage c = bets.coinbets[i];
+	        uint256[] storage betIdList = c.playerBetMap[msg.sender];
+	        
+	        for (uint256 j = 0; j < betIdList.length; ++j) {
+	            Bets storage b = c.bets[betIdList[j]];
+	            amount = amount.add(b.betAmount);
 	        }
 	    }
 	}

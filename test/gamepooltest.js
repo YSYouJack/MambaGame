@@ -60,13 +60,17 @@ contract('GamePoolTestProxy', function(accounts) {
 		let CLAIM_AWARD_TIME_AFTER_CLOSE = await game.CLAIM_AWARD_TIME_AFTER_CLOSE.call();
 		assert.equal(CLAIM_AWARD_TIME_AFTER_CLOSE, 2592000);
 		
+		let MAX_FETCHING_TIME_FOR_END_EXRATE = await game.MAX_FETCHING_TIME_FOR_END_EXRATE.call();
+		assert.equal(MAX_FETCHING_TIME_FOR_END_EXRATE, 3600);
+		
 		let packedData = await game.packedCommonData.call();
-		assert.equal(packedData.length, 5);
+		assert.equal(packedData.length, 6);
 		assert.equal(packedData[0], txFeeReceiver);
 		assert.ok(packedData[1].eq(MIN_BET));
 		assert.ok(packedData[2].eq(HIDDEN_TIME_BEFORE_CLOSE));
 		assert.ok(packedData[3].eq(CLAIM_AWARD_TIME_AFTER_CLOSE));
-		assert.ok(packedData[4].eq(numberOfGames));
+		assert.ok(packedData[4].eq(MAX_FETCHING_TIME_FOR_END_EXRATE));
+		assert.ok(packedData[5].eq(numberOfGames));
 	});
 	
 	it("Send & withdraw oraclize fee", async function () {
@@ -103,7 +107,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		assert.equal(numberOfGames, 1);
 		
 		let gameData = await game.games.call(0);
-		assert.equal(gameData.length, 13);
+		assert.equal(gameData.length, 14);
 		
 		// Test game data from 'games' getter.
 		// Game id.
@@ -123,18 +127,21 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Claimed award time.
 		assert.equal(gameData[5], 2592000);
 		
+		// Max fetching time for end exrate.
+		assert.equal(gameData[6], 3600);
+		
 		// Y, A, B, tx fee
-		assert.equal(gameData[6], 0);
-		assert.equal(gameData[7], 10);
-		assert.equal(gameData[8], 20);
-		assert.equal(gameData[9], 5);
+		assert.equal(gameData[7], 0);
+		assert.equal(gameData[8], 10);
+		assert.equal(gameData[9], 20);
+		assert.equal(gameData[10], 5);
 		
 		// Is finished, is y choosed.
-		assert.equal(gameData[10], false);
 		assert.equal(gameData[11], false);
+		assert.equal(gameData[12], false);
 		
 		// Minimum difference bets.
-		assert.equal(gameData[12], web3.toWei("10", "finney"));	
+		assert.equal(gameData[13], web3.toWei("10", "finney"));	
 		
 		// Test game data from 'gamePackedCommonData' getter.
 		gameData = await game.gamePackedCommonData.call(0);
@@ -267,6 +274,13 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		await game.setOpenCloseTime(gameId, now - 600, now - 300);
 		gameState = await game.gameState(gameId);
+		assert.equal(gameState, 5); // WaitToClose
+		
+		await game.setOpenCloseTime(gameId, now - 300, now + 300);
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		
+		await game.setOpenCloseTime(gameId, now - 600, now - 300);
+		gameState = await game.gameState(gameId);
 		assert.equal(gameState, 4); // Stop
 		
 		await game.setEndExRate(gameId, [10000, 20000, 30000, 50, 4000]);
@@ -395,8 +409,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[7];
-		let B = gameData[8];
+		let A = gameData[8];
+		let B = gameData[9];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -443,7 +457,7 @@ contract('GamePoolTestProxy', function(accounts) {
 		assert.ok(balanceBegin1.add(awards1).sub(balanceFinal1).lte(threshold));
 		assert.ok(balanceBegin2.add(awards2).sub(balanceFinal2).lte(threshold));
 	});
-	
+
 	it("Game - Largest rasing coin, sole winner, two highest bets, force Y = 0", async function () {
 		let game = await GamePoolTestProxy.deployed();
 		
@@ -497,8 +511,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[7];
-		let B = gameData[8];
+		let A = gameData[8];
+		let B = gameData[9];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -597,8 +611,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[7];
-		let B = gameData[8];
+		let A = gameData[8];
+		let B = gameData[9];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -696,8 +710,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[7];
-		let B = gameData[8];
+		let A = gameData[8];
+		let B = gameData[9];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -799,8 +813,8 @@ contract('GamePoolTestProxy', function(accounts) {
 		// Calculate awards.
 		let gameData = await game.games.call(gameId);
 		
-		let A = gameData[7];
-		let B = gameData[8];
+		let A = gameData[8];
+		let B = gameData[9];
 		
 		let oneHundred = web3.toBigNumber("100");
 		
@@ -989,5 +1003,57 @@ contract('GamePoolTestProxy', function(accounts) {
 		let balanceFinal0 = await getBalance(accounts[7]);
 		
 		assert.ok(balanceBegin0.add(totalAwards).sub(balanceFinal0).lte(threshold));
+	});
+	
+	it("Game - Claim refund on error games.", async function () {
+		let game = await GamePoolTestProxy.deployed();
+		
+		// Test is closed.
+		let numberOfGames = await game.numberOfGames.call();
+		assert.ok(numberOfGames > 0);
+		
+		let gameId = numberOfGames - 1;
+		
+		// Bets.
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[7]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+		await game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]});
+		
+		// Change the game time.
+		let now = Math.floor(Date.now() / 1000);
+		let maxFetchingTime = await game.MAX_FETCHING_TIME_FOR_END_EXRATE.call();
+		maxFetchingTime = maxFetchingTime.toNumber();
+		
+		await game.setOpenCloseTime(gameId, now - maxFetchingTime - 600, now - maxFetchingTime - 300);
+		let gameState = await game.gameState(gameId);
+		assert.equal(gameState, 7);
+		
+		// Claim refunds.
+		let refunds = await game.calculateRefund(gameId, {from: accounts[7]});
+		assert.ok(refunds.eq(web3.toWei("0.00995", "ether")));
+		
+		let balanceBegin0 = await getBalance(accounts[7]);
+		await game.claimRefunds(gameId, {from: accounts[7]});
+		let balanceFinal0 = await getBalance(accounts[7]);
+		
+		assert.ok(balanceBegin0.add(refunds).sub(balanceFinal0).lte(threshold));
+	
+		refunds = await game.calculateRefund(gameId, {from: accounts[7]}); // Clear refunds.
+		assert.ok(refunds.isZero);
+			
+		// Owner get the unclaimed refunds.
+		let maxClaimTime = await game.CLAIM_AWARD_TIME_AFTER_CLOSE.call();
+		
+		await game.setOpenCloseTime(gameId, now - maxClaimTime - 600, now - maxClaimTime - 300);
+		refunds = await game.calculateRefund(gameId, {from: accounts[1]});
+		assert.ok(refunds.isZero);
+		
+		let balanceBegin1 = await getBalance(accounts[0]);
+		await game.getUnclaimedAward(gameId, {from: accounts[0]});
+		let balanceFinal1 = await getBalance(accounts[0]);
+		
+		assert.ok(balanceBegin1.add(web3.toWei("0.0398", "ether")).sub(balanceFinal1).lte(threshold));
 	});
 });

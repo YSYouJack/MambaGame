@@ -225,6 +225,18 @@ window.addEventListener('load', function () {
 							console.error(error);
 							alert(error.message);
 						});
+					} else if (state === 'Error') {
+						document.getElementById("bet-form-submit-btn").disabled = true;
+						game.calculateRefunds().then(function (awards) {
+							document.getElementById("unclaimed-refunds").innerHTML = awards;
+							if (Number.parseFloat(awards) != 0) {
+								document.getElementById("get-refunds").disabled = false;
+							}
+						}).catch(function (error) {
+							console.error(error);
+							alert(error.message);
+						});
+						
 					} else {
 						document.getElementById("bet-form-submit-btn").disabled = true;
 					}
@@ -307,6 +319,20 @@ window.addEventListener('load', function () {
 				game.getAwards().then(function () {
 					document.getElementById("unclaimed-awards").innerHTML = 0;
 					document.getElementById("get-awards").disabled = true;
+				}).catch(function (error) {
+					console.error(error);
+					alert(error.message);
+				});
+			}
+		});
+		
+		// Get refunds from this game.
+		document.getElementById("get-refunds").addEventListener('click', function (event) {
+			event.preventDefault();
+			if (game) {
+				game.getRefunds().then(function () {
+					document.getElementById("unclaimed-refunds").innerHTML = 0;
+					document.getElementById("get-refunds").disabled = true;
 				}).catch(function (error) {
 					console.error(error);
 					alert(error.message);

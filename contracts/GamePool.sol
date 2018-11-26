@@ -28,6 +28,7 @@ contract GamePool is Ownable, usingOraclize {
 	uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
 	uint256 public ORICALIZE_GAS_LIMIT = 120000;
 	uint256 public CLAIM_AWARD_TIME_AFTER_CLOSE = 30 days;
+	uint256 public MAX_FETCHING_TIME_FOR_END_EXRATE = 1 hours;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
     event EndExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
@@ -38,11 +39,13 @@ contract GamePool is Ownable, usingOraclize {
 	event CoinBet(uint256 indexed gameId, uint256 coinId, address player, uint256 amount);
 	event CoinLargestBetChanged(uint256 indexed gameId, uint256 coinId, uint256 amount);
 	event SendAwards(uint256 indexed gameId, address player, uint256 awards);
+	event RefundClaimed(uint256 indexed gameId, address player, uint256 amount);
 	event OraclizeFeeReceived(uint256 received);
 	event OraclizeFeeUsed(uint256 used);
 	event SentOraclizeQuery(bytes32 queryId);
 	event SendTxFee(address receiver, uint256 feeAmount);
 	event GetUnclaimedAwards(uint256 indexed gameId, address receiver, uint256 feeAmount);
+	event GetUnclaimedRefunds(uint256 indexed gameId, address receiver, uint256 feeAmount);
 	
 	event GameCreated(uint256 gameId);
 	
@@ -77,12 +80,14 @@ contract GamePool is Ownable, usingOraclize {
             , uint256 _minimumBets
             , uint256 _hiddenTimeLengthBeforeClose
 	        , uint256 _claimAwardTimeAfterClose
+	        , uint256 _maximumFetchingTimeForEndExRate
 	        , uint256 _numberOfGames)
     {
         _txFeeReceiver = txFeeReceiver;
         _minimumBets = MIN_BET;
         _hiddenTimeLengthBeforeClose = HIDDEN_TIME_BEFORE_CLOSE;
         _claimAwardTimeAfterClose = CLAIM_AWARD_TIME_AFTER_CLOSE;
+        _maximumFetchingTimeForEndExRate = MAX_FETCHING_TIME_FOR_END_EXRATE;
         _numberOfGames = games.length;
     }
     
@@ -159,7 +164,9 @@ contract GamePool is Ownable, usingOraclize {
 		require(_txFee <= 1000); // < 100%
 		
 		if (0 != games.length) {
-	        require(games[games.length - 1].isFinished);
+		    GameLogic.State state = GameLogic.state(games[games.length - 1]
+		        , gameBets[games.length - 1]);
+	        require(GameLogic.State.Closed == state || GameLogic.State.Error == state);
 	    }
 		
 		// Create new game data.
@@ -174,6 +181,7 @@ contract GamePool is Ownable, usingOraclize {
 		game.duration = _duration;
 		game.hiddenTimeBeforeClose = HIDDEN_TIME_BEFORE_CLOSE;
 		game.claimTimeAfterClose = CLAIM_AWARD_TIME_AFTER_CLOSE;
+		game.maximumFetchingTimeForEndExRate = MAX_FETCHING_TIME_FOR_END_EXRATE;
 		
 		game.coins[0].name = _coinName0;
 		game.coins[1].name = _coinName1;
@@ -209,6 +217,7 @@ contract GamePool is Ownable, usingOraclize {
 	        , uint256 minDiffBets)
 	{
 	    GameLogic.Instance storage game = games[_gameId];
+	    GameLogic.GameBets storage bets = gameBets[_gameId];
 	    
 	    openTime = game.openTime;
 	    closeTime = game.closeTime;
@@ -217,7 +226,7 @@ contract GamePool is Ownable, usingOraclize {
 	    Y = game.Y;
 	    A = game.A;
 	    B = game.B;
-	    state = uint8(GameLogic.state(game));
+	    state = uint8(GameLogic.state(game, bets));
 	    txFee = game.txFee;
 	    minDiffBets = game.minDiffBets;
 	    
@@ -234,9 +243,10 @@ contract GamePool is Ownable, usingOraclize {
 	    
 	    winnerMasks = 0;
 	    for (_gameId = 0; _gameId < game.winnerCoinIds.length; ++_gameId) {
-	        winnerMasks |= uint8(1 << (game.winnerCoinIds[_gameId] + 1));
+	        winnerMasks |= uint8(1 << game.winnerCoinIds[_gameId]);
 	    }
 	}
+	
 	
 	function gameCoinData(uint256 _gameId, uint256 _coinId)
 	    hasGameId(_gameId)
@@ -345,7 +355,7 @@ contract GamePool is Ownable, usingOraclize {
     
     function gameState(uint256 _gameId) public view returns (GameLogic.State) {
         if (_gameId < games.length) {
-            return GameLogic.state(games[_gameId]);
+            return GameLogic.state(games[_gameId], gameBets[_gameId]);
         } else {
             return GameLogic.State.NotExists;
         }
@@ -381,7 +391,7 @@ contract GamePool is Ownable, usingOraclize {
     {
         // Check the game state.
         GameLogic.Instance storage game = games[_gameId];
-        require(GameLogic.state(game) == GameLogic.State.Created);
+        require(GameLogic.state(game, gameBets[_gameId]) == GameLogic.State.Created);
         
         // Check the tx fee amount.
         require(address(this).balance >= oraclizeFee);
@@ -404,7 +414,7 @@ contract GamePool is Ownable, usingOraclize {
     {
         // Check the game state.
         GameLogic.Instance storage game = games[_gameId];
-        require(GameLogic.state(game) == GameLogic.State.Stop);
+        require(GameLogic.state(game, gameBets[_gameId]) == GameLogic.State.Stop);
         
         // Check the tx fee amount.
         require(address(this).balance >= oraclizeFee);
@@ -431,12 +441,14 @@ contract GamePool is Ownable, usingOraclize {
 	    returns (bool)
 	{
 	    GameLogic.Instance storage game = games[_gameId];
-		require(GameLogic.state(game) == GameLogic.State.WaitToClose);
+	    GameLogic.GameBets storage bets = gameBets[_gameId];
+	    	
+		require(GameLogic.state(game, bets) == GameLogic.State.WaitToClose);
 		
-		GameLogic.GameBets storage bets = gameBets[_gameId];
-		
-		GameLogic.tryClose(game, bets);
-		
+		if (0 != bets.totalAwards) {
+		    GameLogic.tryClose(game, bets);
+		}
+
 		if (game.isFinished) {
 		    GameLogic.calculateAwardForCoin(game, bets, bets.totalAwards);
 		    emit GameClosed(_gameId);
@@ -479,6 +491,23 @@ contract GamePool is Ownable, usingOraclize {
 	    }
 	}
 	
+	function calculateRefund(uint256 _gameId) 
+	    hasGameId(_gameId)
+	    public
+	    view
+	    returns (uint256)
+	{
+	    GameLogic.State queryGameState = gameState(_gameId);
+	    if (GameLogic.State.Error == queryGameState) {
+	        GameLogic.Instance storage game = games[_gameId];
+		    GameLogic.GameBets storage bets = gameBets[_gameId];
+		
+		    return GameLogic.calculateRefundAmount(game, bets);
+	    } else {
+	        return 0;
+	    }
+	}
+	
 	function getAwards(uint256 _gameId) hasGameId(_gameId) public {
 	    uint256 amount = calculateAwardAmount(_gameId);
 		if (0 < amount) {
@@ -493,11 +522,17 @@ contract GamePool is Ownable, usingOraclize {
 		}
 	}
 	
-	function closeErrorGame(uint256 _gameId) hasGameId(_gameId) public {
-        GameLogic.Instance storage game = games[_gameId];
-	    GameLogic.closeErrorGame(game);
-		
-		emit GameClosed(_gameId);
+	function claimRefunds(uint256 _gameId) hasGameId(_gameId) public {
+	    uint256 amount = calculateRefund(_gameId);
+		if (0 < amount) {
+		    GameLogic.GameBets storage bets = gameBets[_gameId];
+            
+            bets.isRefunded[msg.sender] = true;
+            bets.claimedRefunds = bets.claimedRefunds.add(amount);
+            
+		    msg.sender.transfer(amount);
+		    emit RefundClaimed(_gameId, msg.sender, amount);
+		}
 	}
     
     function withdrawOraclizeFee() public onlyOwner {
@@ -523,6 +558,23 @@ contract GamePool is Ownable, usingOraclize {
 	    owner().transfer(amount);
 	    emit GetUnclaimedAwards(_gameId, owner(), amount);
 	}
+	
+	function getUnclaimedRefunds(uint256 _gameId) 
+        hasGameId(_gameId) 
+        onlyOwner 
+        public
+    {
+        GameLogic.Instance storage game = games[_gameId];
+        require(game.closeTime + game.claimTimeAfterClose < now);
+        
+        GameLogic.GameBets storage bets = gameBets[_gameId];
+        
+	    uint256 amount = bets.totalAwards.sub(bets.claimedRefunds);
+	    bets.claimedRefunds = bets.totalAwards;
+	    
+	    owner().transfer(amount);
+	    emit GetUnclaimedRefunds(_gameId, owner(), amount);
+	}
     
     function sendOraclizeFee() public payable {
         oraclizeFee = oraclizeFee.add(msg.value);
@@ -539,6 +591,7 @@ contract GamePool is Ownable, usingOraclize {
 	    
 	    uint256 gameId = queryRecords[_id].gameId;
 	    GameLogic.Instance storage game = games[gameId];
+	    GameLogic.GameBets storage gameBet = gameBets[gameId];
 	    
 	    if (RecordType.RandY == queryRecords[_id].recordType) {
 	        game.Y = game.YDistribution[parseInt(_result)];
@@ -546,7 +599,7 @@ contract GamePool is Ownable, usingOraclize {
 	        delete queryRecords[_id];
 	        emit GameYChoosed(gameId, game.Y);
 	        
-	        if (GameLogic.state(game) == GameLogic.State.WaitToClose) {
+	        if (GameLogic.state(game, gameBet) == GameLogic.State.WaitToClose) {
 	            emit GameWaitToClose(gameId);
 	        }
 	        
@@ -558,9 +611,9 @@ contract GamePool is Ownable, usingOraclize {
 	            delete queryRecords[_id];
 	            emit StartExRateUpdated(gameId, coinId, game.coins[coinId].startExRate, now);
 	            
-	            if (GameLogic.state(game) == GameLogic.State.Ready) {
+	            if (GameLogic.state(game, gameBet) == GameLogic.State.Ready) {
 	                emit GameReady(gameId);
-	            } else if (GameLogic.state(game) == GameLogic.State.Open) {
+	            } else if (GameLogic.state(game, gameBet) == GameLogic.State.Open) {
 	                emit GameOpened(gameId);
 	            }
 	            
@@ -570,7 +623,7 @@ contract GamePool is Ownable, usingOraclize {
 	            delete queryRecords[_id];
 	            emit EndExRateUpdated(gameId, coinId, game.coins[coinId].endExRate, now);
 	            
-	            if (GameLogic.state(game) == GameLogic.State.WaitToClose) {
+	            if (GameLogic.state(game, gameBet) == GameLogic.State.WaitToClose) {
 	                emit GameWaitToClose(gameId);
 	            }
 	            

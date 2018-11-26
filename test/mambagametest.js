@@ -73,6 +73,9 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			assert.equal(mambaGamePool.txFeeReceiver, accounts[0]);
 			assert.equal(mambaGamePool.minimumBets, '0.01');
 			assert.equal(mambaGamePool.playerAddress, accounts[0]);
+			assert.equal(mambaGamePool.hiddenTimeLengthBeforeClose, 300000);
+			assert.equal(mambaGamePool.claimAwardTimeAfterClose, 2592000000);
+			assert.equal(mambaGamePool.maximumFetchingTimeForEndExRate, 3600000);
 			
 			mambaGamePool.close();
 			assert.ok(!mambaGamePool.isInited);
@@ -151,6 +154,7 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			assert.equal(mambaGame.duration, 600000);
 			assert.equal(mambaGame.hiddenTimeLengthBeforeClose, 300000);
 			assert.equal(mambaGame.claimAwardTimeAfterClose, 2592000000);
+			assert.equal(mambaGame.maximumFetchingTimeForEndExRate, 3600000);
 			assert.equal(mambaGame.Y, 39);
 			assert.equal(mambaGame.A, 10);
 			assert.equal(mambaGame.B, 20);
@@ -299,6 +303,16 @@ contract('Mamba game front-end javascript', async function(accounts) {
 			
 			let balanceBefore = await getBalance(mambaGamePool.playerAddress);				
 			await mambaGame.getAwards();
+			
+			function sleep(secs) {
+				return new Promise (function (resolve, reject) {
+					setTimeout(function () {
+						resolve();
+					}, secs);
+				});
+			}
+			
+			await sleep(5000);
 			
 			// Do a longer operation to wait blockchain finished.
 			let history = await mambaGamePool.getPlayerBetsHistory();

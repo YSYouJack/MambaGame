@@ -198,10 +198,28 @@ Calculate the awards amount after the game has been closed. If the game has not 
 * The coin id is out of range.
 * Some error happens on interaction with Ethereum.
 
+#### `mambaGame.calculateRefunds()`
+Calculate the refunds amount after the game has been closed. If the game has not been closed, 
+##### Returns
+`Promise` - Returns the refunds amount in ether if the operation was in `Error` state. Returns error if one of the following conditions happens
+* The game has not start. Please check `mambaGame.openTime`.
+* The game has closed. Please check `mambaGame.closeTime`.
+* The coin id is out of range.
+* Some error happens on interaction with Ethereum.
+
 #### `mambaGame.getAwards()`
 Claim the rewards of the player. 
 ##### Returns
 `Promise` - Returns void if the operation was successed. Returns error if one of the following conditions happens
+* The game has not start. Please check `mambaGame.openTime`.
+* The game has closed. Please check `mambaGame.closeTime`.
+* The coin id is out of range.
+* Some error happens on interaction with Ethereum.
+
+#### `mambaGame.getRefunds()`
+Claim the refunds of the player. 
+##### Returns
+`Promise` - Returns void if the operation was  in `Error` state. Returns error if one of the following conditions happens
 * The game has not start. Please check `mambaGame.openTime`.
 * The game has closed. Please check `mambaGame.closeTime`.
 * The coin id is out of range.
