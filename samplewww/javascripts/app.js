@@ -121,6 +121,8 @@ window.addEventListener('load', function () {
 				document.getElementById("game-open-time").innerHTML = game.openTime;
 				document.getElementById("game-close-time").innerHTML = game.closeTime;
 				document.getElementById("game-duration").innerHTML = game.duration;
+				document.getElementById("game-fetch-endexrate").innerHTML = new Date(game.closeTime.getTime() + game.maximumFetchingTimeForEndExRate);
+				document.getElementById("game-claim-time").innerHTML = new Date(game.closeTime.getTime() + game.claimAwardTimeAfterClose);
 				document.getElementById("game-y").innerHTML = game.Y;
 				document.getElementById("game-a").innerHTML = game.A;
 				document.getElementById("game-b").innerHTML = game.B;
@@ -164,6 +166,8 @@ window.addEventListener('load', function () {
 						// to `Open` state from other game states.
 						
 						document.getElementById("game-close-time").innerHTML = game.closeTime;
+						document.getElementById("game-fetch-endexrate").innerHTML = new Date(game.closeTime.getTime() + game.maximumFetchingTimeForEndExRate);
+						document.getElementById("game-claim-time").innerHTML = new Date(game.closeTime.getTime() + game.claimAwardTimeAfterClose);
 						document.getElementById("game-y").innerHTML = game.Y;
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
