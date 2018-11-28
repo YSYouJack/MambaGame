@@ -299,6 +299,13 @@ window.addEventListener('load', function () {
 				if (Number.parseFloat(awards) != 0) {
 					document.getElementById("get-awards").disabled = false;
 				}
+				return game.calculateRefunds();
+			}).then(function (awards) {
+				document.getElementById("unclaimed-refunds").innerHTML = awards;
+				if (Number.parseFloat(awards) != 0) {
+					document.getElementById("get-refunds").disabled = false;
+				}
+				
 			}).catch(function (error) {
 				console.error(error);
 				alert(error.message);
