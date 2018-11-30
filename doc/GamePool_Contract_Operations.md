@@ -13,6 +13,19 @@ Withdraw the Orcalize Fee
 ----------------------------------------
 Call `GamePool.withdrawOraclizeFee` from the creator address.
 
+Withdraw the Uclaimed Awards
+----------------------------------------
+Call `GamePool.getUnclaimedAward` from the creator address.
+
+#### Parameters ####
+1. `uint256 gameId` - The id of the operated game.
+
+Withdraw the Unclaimed Refunds
+----------------------------------------
+Call `GamePool.getUnclaimedRefunds` from the creator address.
+
+#### Parameters ####
+1. `uint256 gameId` - The id of the operated game.
 
 Game Operation
 ----------------------------------------
@@ -20,7 +33,7 @@ The life cycle of a game is shown as the following image.
 ![Life Cycle of a Game](StateDiagramOfMambaGame.png)
 
 ### Game State (N/A => `Created`) ###
-Call `GamePool.createNewGame` with the following parameters from the creator address. The function will failed if the previous game has not been closed by the Mamba Team. `Created` state means that the game has been deployed to blockchain, but not allowed for players to take bets.
+Call `GamePool.createNewGame` with the following parameters from the creator address. The function successed if the previous game has been closed by the Mamba Team or the previous game was in `Error` state. `Created` state means that the game has been deployed to blockchain, but not allowed for players to take bets.
 
 #### Parameters ####
 1. `uint256 openTime` - The opening time of the game. (In unix time format).
@@ -66,15 +79,19 @@ Call `GamePool.close` with the following parameters from the creator address. Th
 #### Parameters ####
 1. `uint256 gameId` - The id of the operated game.
 
-### Game State (`Error` => `Closed`) ###
-Call `GamePool.closeErrorGame` with the following parameters from the creator address. `Error` state means that the start exchange rates have not been written to blockchain before the game reached their closing time. This function will close the game.
-
-#### Parameters ####
-1. `uint256 gameId` - The id of the operated game.
+### Game State (`Created` => `Error` or `Stop` => `Error`) ###
+`Error` state means that the game doesn't have enough information to determine the winners at the closing time. Situations like the response time was too long for updating exchange rates. 
 
 Players Get Awards
 --------------------------
-Call `GamePool.getAwards`. Players can get awards only before the next game goes to `Open` state.
+Call `GamePool.getAwards`. Players can get awards within 30 days after the closing time of the game.
+
+#### Parameters ####
+1. `uint256 gameId` - The id of the game.
+
+Players Get Refunds
+--------------------------
+Call `GamePool.claimRefunds`. Players can claim refunds only when game was in `Error` state.
 
 #### Parameters ####
 1. `uint256 gameId` - The id of the game.
