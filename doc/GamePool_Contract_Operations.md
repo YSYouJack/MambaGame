@@ -91,7 +91,7 @@ Call `GamePool.getAwards`. Players can get awards within 30 days after the closi
 
 Players Get Refunds
 --------------------------
-Call `GamePool.claimRefunds`. Players can claim refunds only when game was in `Error` state.
+Call `GamePool.claimRefunds`. Players can claim refunds only when game was in `Error` state and within 30 days after the closing time of the game.
 
 #### Parameters ####
 1. `uint256 gameId` - The id of the game.
