@@ -180,9 +180,9 @@ contract('Mamba game front-end javascript', async function(accounts) {
 					assert.equal(mambaGame.coins[i].name, "ETC");
 				}
 				
-				assert.equal(mambaGame.coins[i].startExRate * 100, startExRate[i]); // startExRate
+				assert.equal(mambaGame.coins[i].startExRate * 100000, startExRate[i]); // startExRate
 				assert.ok(mambaGame.coins[i].timeStampOfStartExRate.getTime() > 0); // timeStampOfStartExRate
-				assert.equal(mambaGame.coins[i].endExRate * 100, endExRate[i]);     // endExRate
+				assert.equal(mambaGame.coins[i].endExRate * 100000, endExRate[i]);     // endExRate
 				assert.ok(mambaGame.coins[i].timeStampOfEndExRate.getTime() > 0);   // timeStampOfEndExRate
 				assert.equal(mambaGame.coins[i].totalBets, "0");
 				assert.equal(mambaGame.coins[i].largestBets, "0");
