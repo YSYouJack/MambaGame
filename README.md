@@ -58,6 +58,6 @@ Sometimes you will see some errors when the test cases called contract method bu
 How to Run Sample Http
 ------------------------
 1. Deploy contracts. `truffle migration`.
-2. Copy the contract address to mambagame.js mambaGamePool.address field.
+2. Copy the contract address to mambagame.js `mambaGamePool.address` field.
 3. Set MetaMask to connect private chain.
 4. Run sample. `npm run dev`
