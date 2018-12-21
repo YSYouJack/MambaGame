@@ -558,7 +558,7 @@
 					if (error) {
 						reject(error);
 					} else {
-						obj.Y = result[6].toNumber();
+						obj.Y = result[7].toNumber();
 						resolve();
 					}
 				});
