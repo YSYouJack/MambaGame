@@ -5,7 +5,7 @@ import "../third-contracts/openzeppelin-solidity/contracts/math/SafeMath.sol";
 library GameLogic {
     using SafeMath for uint256;
 
-    enum State { NotExists, Created, Ready, Open, Stop, WaitToClose, Closed, Error}
+    enum State { NotExists, Created, Ready, Open, Stop, WaitToClose, Closed, Error }
     enum CompareResult { Equal, Less, Greater }
 
     struct Bets {
