@@ -15,9 +15,9 @@ library GameLogic {
 
     struct Coin {
         string name;
-        int32 startExRate;
+        int256 startExRate;
         uint256 timeStampOfStartExRate;
-        int32 endExRate;
+        int256 endExRate;
         uint256 timeStampOfEndExRate;
     }
 
@@ -402,8 +402,8 @@ library GameLogic {
         view
         returns (CompareResult)
     {
-        int32 value0 = (coin0.endExRate - coin0.startExRate) * coin1.startExRate;
-        int32 value1 = (coin1.endExRate - coin1.startExRate) * coin0.startExRate;
+        int256 value0 = (coin0.endExRate - coin0.startExRate) * coin1.startExRate;
+        int256 value1 = (coin1.endExRate - coin1.startExRate) * coin0.startExRate;
         
         if (value0 == value1) {
             return CompareResult.Equal;

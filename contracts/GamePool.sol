@@ -259,9 +259,9 @@ contract GamePool is Ownable, usingOraclize {
         GameLogic.Instance storage game = games[_gameId];
         
         name = game.coins[_coinId].name;
-        startExRate = game.coins[_coinId].startExRate;
+        startExRate = int32(game.coins[_coinId].startExRate);
         timeStampOfStartExRate = game.coins[_coinId].timeStampOfStartExRate;
-        endExRate = game.coins[_coinId].endExRate;
+        endExRate = int32(game.coins[_coinId].endExRate);
         timeStampOfEndExRate = game.coins[_coinId].timeStampOfEndExRate;
     }
     
@@ -279,9 +279,9 @@ contract GamePool is Ownable, usingOraclize {
         
         for (uint256 i = 0 ; i < 5; ++i) {
             encodedName[i] = GameLogic.encodeCoinName(game.coins[i].name);
-            startExRate[i] = game.coins[i].startExRate;
+            startExRate[i] = int32(game.coins[i].startExRate);
             timeStampOfStartExRate[i] = game.coins[i].timeStampOfStartExRate;
-            endExRate[i] = game.coins[i].endExRate;
+            endExRate[i] = int32(game.coins[i].endExRate);
             timeStampOfEndExRate[i] = game.coins[i].timeStampOfEndExRate;
         }
     }
@@ -606,10 +606,10 @@ contract GamePool is Ownable, usingOraclize {
         } else {
             uint256 coinId = queryRecords[_id].arg;
             if (RecordType.StartExRate == queryRecords[_id].recordType) {
-                game.coins[coinId].startExRate = int32(parseInt(_result, 5));
+                game.coins[coinId].startExRate = int256(parseInt(_result, 5));
                 game.coins[coinId].timeStampOfStartExRate = now;
                 delete queryRecords[_id];
-                emit StartExRateUpdated(gameId, coinId, game.coins[coinId].startExRate, now);
+                emit StartExRateUpdated(gameId, coinId, int32(game.coins[coinId].startExRate), now);
                 
                 if (GameLogic.state(game, gameBet) == GameLogic.State.Ready) {
                     emit GameReady(gameId);
@@ -618,10 +618,10 @@ contract GamePool is Ownable, usingOraclize {
                 }
                 
             } else if (RecordType.EndExRate == queryRecords[_id].recordType) {
-                game.coins[coinId].endExRate = int32(parseInt(_result, 5));
+                game.coins[coinId].endExRate = int256(parseInt(_result, 5));
                 game.coins[coinId].timeStampOfEndExRate = now;
                 delete queryRecords[_id];
-                emit EndExRateUpdated(gameId, coinId, game.coins[coinId].endExRate, now);
+                emit EndExRateUpdated(gameId, coinId, int32(game.coins[coinId].endExRate), now);
                 
                 if (GameLogic.state(game, gameBet) == GameLogic.State.WaitToClose) {
                     emit GameWaitToClose(gameId);
