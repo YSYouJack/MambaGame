@@ -60,17 +60,21 @@ contract('GamePoolTestProxy', function(accounts) {
 		let CLAIM_AWARD_TIME_AFTER_CLOSE = await game.CLAIM_AWARD_TIME_AFTER_CLOSE.call();
 		assert.equal(CLAIM_AWARD_TIME_AFTER_CLOSE, 2592000);
 		
+        let CLAIM_REFUND_TIME_AFTER_CLOSE = await game.CLAIM_REFUND_TIME_AFTER_CLOSE.call();
+		assert.equal(CLAIM_REFUND_TIME_AFTER_CLOSE, 21600);
+        
 		let MAX_FETCHING_TIME_FOR_END_EXRATE = await game.MAX_FETCHING_TIME_FOR_END_EXRATE.call();
 		assert.equal(MAX_FETCHING_TIME_FOR_END_EXRATE, 3600);
 		
 		let packedData = await game.packedCommonData.call();
-		assert.equal(packedData.length, 6);
+		assert.equal(packedData.length, 7);
 		assert.equal(packedData[0], txFeeReceiver);
 		assert.ok(packedData[1].eq(MIN_BET));
 		assert.ok(packedData[2].eq(HIDDEN_TIME_BEFORE_CLOSE));
 		assert.ok(packedData[3].eq(CLAIM_AWARD_TIME_AFTER_CLOSE));
-		assert.ok(packedData[4].eq(MAX_FETCHING_TIME_FOR_END_EXRATE));
-		assert.ok(packedData[5].eq(numberOfGames));
+        assert.ok(packedData[4].eq(CLAIM_REFUND_TIME_AFTER_CLOSE));
+		assert.ok(packedData[5].eq(MAX_FETCHING_TIME_FOR_END_EXRATE));
+		assert.ok(packedData[6].eq(numberOfGames));
 	});
 	
 	it("Send & withdraw oraclize fee", async function () {
@@ -125,7 +129,10 @@ contract('GamePoolTestProxy', function(accounts) {
 		assert.equal(gameData[4], 300);
 		
 		// Claimed award time.
-		assert.equal(gameData[5], 2592000);
+        let claimAwardsTime = gameData[5].modulo("0x100000000000000000000000000000000", 16); // 1 << 128
+        let claimRefundsTime = gameData[5].dividedBy("0x100000000000000000000000000000000", 16); // 1 << 128;
+		assert.equal(claimAwardsTime, 2592000);
+        assert.equal(claimRefundsTime, 21600);
 		
 		// Max fetching time for end exrate.
 		assert.equal(gameData[6], 3600);
@@ -429,11 +436,11 @@ contract('GamePoolTestProxy', function(accounts) {
 		let highestAwards = totalAwards.sub(awards0).sub(awardsOfB).dividedToIntegerBy(web3.toBigNumber("2"));
 		awards0 = awards0.add(highestAwards);
 		awards1 = awards1.add(highestAwards);
-		
+        
 		let awardsFromContract0 = await game.calculateAwardAmount(gameId, {from: accounts[7]});
 		let awardsFromContract1 = await game.calculateAwardAmount(gameId, {from: accounts[8]});
 		let awardsFromContract2 = await game.calculateAwardAmount(gameId, {from: accounts[9]});
-		
+        
 		assert.ok(awardsFromContract0.eq(awards0));
 		assert.ok(awardsFromContract1.eq(awards1));
 		assert.ok(awardsFromContract2.eq(awards2));
@@ -1056,4 +1063,114 @@ contract('GamePoolTestProxy', function(accounts) {
 		
 		assert.ok(balanceBegin1.add(web3.toWei("0.0398", "ether")).sub(balanceFinal1).lte(threshold));
 	});
+    
+    it("Game - Tied because on sole winner in other group.", async function () {
+		let game = await GamePoolTestProxy.deployed();
+		
+		// Test is closed.
+		let numberOfGames = await game.numberOfGames.call();
+		assert.ok(numberOfGames > 0);
+		
+		let gameId = numberOfGames - 1;
+		
+		// Bets.
+		await game.bet(gameId, 0, {value: web3.toWei(10, "finney"), from: accounts[7]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 2, {value: web3.toWei(10, "finney"), from: accounts[2]});
+		await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+        await game.bet(gameId, 3, {value: web3.toWei(10, "finney"), from: accounts[3]});
+		await game.bet(gameId, 4, {value: web3.toWei(10, "finney"), from: accounts[4]});
+		
+		// Close the game.
+        let startExRate = [29070
+			, 12025000
+			, 423450
+			, 4467
+			, 2075000];
+        await game.setStartExRate(gameId, startExRate);
+            
+		let endExRate = [29180
+			, 12065000
+			, 423790
+			, 4493
+			, 2087000];
+		await game.setEndExRate(gameId, endExRate);
+		await game.setY(gameId, 10);
+		await game.close(gameId, {from: accounts[0], gasLimit: 371211});
+		
+		// Test the game state.
+		let gameState = await game.gameState.call(gameId);
+		assert.equal(gameState, 3); // Open state.
+	});
+    
+    it("Game - Excludes two coin, sole winner in other group.", async function () {
+		let game = await GamePoolTestProxy.deployed();
+		
+		// Test is closed.
+		let numberOfGames = await game.numberOfGames.call();
+		assert.ok(numberOfGames > 0);
+		
+		let gameId = numberOfGames - 1;
+		
+		// Bets.
+		await game.bet(gameId, 0, {value: web3.toWei(20, "finney"), from: accounts[7]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+		await game.bet(gameId, 1, {value: web3.toWei(10, "finney"), from: accounts[1]});
+        await game.bet(gameId, 3, {value: web3.toWei(40, "finney"), from: accounts[3]});
+		
+		// Close the game.
+        let startExRate = [409625000
+			, 14335000
+			, 293030
+			, 42809
+			, 844000];
+        await game.setStartExRate(gameId, startExRate);
+            
+		let endExRate = [406780000
+			, 14665000
+			, 284530
+			, 41444
+			, 852800];
+		await game.setEndExRate(gameId, endExRate);
+		await game.setY(gameId, 10);
+		await game.close(gameId, {from: accounts[0], gasLimit: 371211});
+		
+		// Test the coin result.
+		for (let i = 0; i < 5; ++i) {
+			let coin = await game.gameCoinData.call(gameId, i);
+			assert.equal(coin[1], startExRate[i]); // startExRate
+			assert.ok(coin[2] != 0);               // timeStampOfStartExRate
+			assert.equal(coin[3], endExRate[i]);   // endExRate
+			assert.ok(coin[4] != 0);               // timeStampOfEndExRate
+		}
+		
+		// Test the game state.
+		let gameState = await game.gameState.call(gameId);
+		assert.equal(gameState, 6); // Close state.
+		
+		// Test the winners.
+		let numberOfWinnerCoinIds = await game.gameNumberOfWinnerCoinIds.call(gameId);
+		assert.ok(numberOfWinnerCoinIds.eq(1));
+		
+		let winnerId = await game.gameWinnerCoinIds.call(gameId, 0);
+		console.log(winnerId.toString());
+        assert.ok(winnerId.eq(3));
+	
+		// Calculate awards
+		let totalAwards = web3.toBigNumber(web3.toWei(79600, "microether"));
+		
+		let awardsFromContract = await game.calculateAwardAmount(gameId, {from: accounts[3]});
+		assert.ok(awardsFromContract.eq(totalAwards));
+		
+		// Get balance at beginning.
+		let balanceBegin0 = await getBalance(accounts[3]);
+		
+		// Withdraw.
+		await game.getAwards(gameId, {from: accounts[3]});
+		
+		// Get balance at ending. 
+		let balanceFinal0 = await getBalance(accounts[3]);
+		
+		assert.ok(balanceBegin0.add(totalAwards).sub(balanceFinal0).lte(threshold));
+    });
 });

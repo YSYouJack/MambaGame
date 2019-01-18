@@ -122,8 +122,9 @@ window.addEventListener('load', function () {
 				document.getElementById("game-close-time").innerHTML = game.closeTime;
 				document.getElementById("game-duration").innerHTML = game.duration;
 				document.getElementById("game-fetch-endexrate").innerHTML = new Date(game.closeTime.getTime() + game.maximumFetchingTimeForEndExRate);
-				document.getElementById("game-claim-time").innerHTML = new Date(game.closeTime.getTime() + game.claimAwardTimeAfterClose);
-				document.getElementById("game-y").innerHTML = game.Y;
+				document.getElementById("game-claim-awards-time").innerHTML = new Date(game.closeTime.getTime() + game.claimAwardTimeAfterClose);
+				document.getElementById("game-claim-refunds-time").innerHTML = new Date(game.closeTime.getTime() + game.claimRefundTimeAfterClose);
+                document.getElementById("game-y").innerHTML = game.Y;
 				document.getElementById("game-a").innerHTML = game.A;
 				document.getElementById("game-b").innerHTML = game.B;
 				document.getElementById("game-txfee").innerHTML = game.txFee;
@@ -151,7 +152,7 @@ window.addEventListener('load', function () {
 					
 					if (0 != game.coins[i].endExRate) {
 						document.getElementById("coins-" + i + "-current-value").innerHTML 
-							= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate).toFixed(2) + '%';
+							= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate) + '%';
 					} else {
 						document.getElementById("coins-" + i + "-current-value").innerHTML = "";
 					}
@@ -167,7 +168,8 @@ window.addEventListener('load', function () {
 						
 						document.getElementById("game-close-time").innerHTML = game.closeTime;
 						document.getElementById("game-fetch-endexrate").innerHTML = new Date(game.closeTime.getTime() + game.maximumFetchingTimeForEndExRate);
-						document.getElementById("game-claim-time").innerHTML = new Date(game.closeTime.getTime() + game.claimAwardTimeAfterClose);
+						document.getElementById("game-claim-awards-time").innerHTML = new Date(game.closeTime.getTime() + game.claimAwardTimeAfterClose);
+                        document.getElementById("game-claim-refunds-time").innerHTML = new Date(game.closeTime.getTime() + game.claimRefundTimeAfterClose);
 						document.getElementById("game-y").innerHTML = game.Y;
 						for (let i = 0; i < game.coins.length; ++i) {
 							document.getElementById("coins-" + i + "-start-exrate").innerHTML = game.coins[i].startExRate;
@@ -177,7 +179,7 @@ window.addEventListener('load', function () {
 							
 							if (0 != game.coins[i].endExRate) {
 								document.getElementById("coins-" + i + "-current-value").innerHTML 
-									= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate).toFixed(2) + '%';
+									= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate) + '%';
 							} else {
 								document.getElementById("coins-" + i + "-current-value").innerHTML = "";
 							}
@@ -202,7 +204,7 @@ window.addEventListener('load', function () {
 							
 							if (0 != game.coins[i].endExRate) {
 								document.getElementById("coins-" + i + "-current-value").innerHTML 
-									= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate).toFixed(2) + '%';
+									= (100 * (game.coins[i].endExRate - game.coins[i].startExRate) / game.coins[i].startExRate) + '%';
 								document.getElementById("coins-" + i + "-current-exrate").innerHTML = "";
 							} else {
 								document.getElementById("coins-" + i + "-current-value").innerHTML = "";
@@ -283,7 +285,7 @@ window.addEventListener('load', function () {
 				game.subscribe('ExrateUpdated', function (coinId, exrate) {
 					document.getElementById("coins-" + coinId + "-current-exrate").innerHTML = exrate;
 					let value = (exrate - game.coins[coinId].startExRate) * 100 / game.coins[coinId].startExRate;
-					document.getElementById("coins-" + coinId + "-current-value").innerHTML = value.toFixed(2) + '%';
+					document.getElementById("coins-" + coinId + "-current-value").innerHTML = value + '%';
 				});
 				
 				if (game.state === 'Open') {

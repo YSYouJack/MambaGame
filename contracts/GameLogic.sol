@@ -42,7 +42,7 @@ library GameLogic {
         uint256 closeTime;
         uint256 duration;
         uint256 hiddenTimeBeforeClose;
-        uint256 claimTimeAfterClose;
+        uint256 claimTimeAfterClose;    // [0~127] award, [128~255]refunds
         uint256 maximumFetchingTimeForEndExRate;
         
         uint8[50] YDistribution;
@@ -67,7 +67,7 @@ library GameLogic {
         uint256 claimedAwards;
         uint256 claimedRefunds;
     }
-
+    
     event CoinBet(uint256 indexed gameId, uint256 coinId, address player, uint256 amount);
     event CoinLargestBetChanged(uint256 indexed gameId, uint256 coinId, uint256 amount);
     event SendTxFee(address receiver, uint256 feeAmount);
@@ -225,23 +225,15 @@ library GameLogic {
                 game.isFinished = true;
                 convertTempIdsToWinnerIds(game, otherIds);
             } else if (otherIds >= 8 && otherIds != 0) {
-                // compare.
-                i = bets.coinbets[(otherIds & 0x7) - 1].totalBetAmount;
-                j = bets.coinbets[((otherIds >> 3) & 0x7) - 1].totalBetAmount;
-                
-                if (i > j.add(game.minDiffBets)) {
-                    game.isFinished = true;
-                    game.winnerCoinIds.push((otherIds & 0x7) - 1);
-                } else if (otherIds >= 128) {
-                    i = bets.coinbets[((otherIds >> 6) & 0x7) - 1].totalBetAmount;
-                    if (j > i.add(game.minDiffBets)) {
-                        convertTempIdsToWinnerIds(game, otherIds & 0x3f);
-                    } else {
-                        convertTempIdsToWinnerIds(game, otherIds);
-                    }
-                    game.isFinished = true;
-                }
-            }
+				// compare.
+				i = bets.coinbets[(otherIds & 0x7) - 1].totalBetAmount;
+				j = bets.coinbets[((otherIds >> 3) & 0x7) - 1].totalBetAmount;
+
+				if (i > j + game.minDiffBets) {
+					game.isFinished = true;
+					convertTempIdsToWinnerIds(game, otherIds & 0x7);
+				} 
+			}
         }
         
         return game.isFinished;
@@ -345,7 +337,7 @@ library GameLogic {
         
         if (bets.isAwardTransfered[msg.sender]) {
             return 0;
-        } else if (game.closeTime + game.claimTimeAfterClose < now) {
+        } else if (endTimeOfAwardsClaiming(game) < now) {
             return 0;
         }
     
@@ -382,7 +374,7 @@ library GameLogic {
         
         if (bets.isRefunded[msg.sender]) {
             return 0;
-        } else if (game.closeTime + game.claimTimeAfterClose < now) {
+        } else if (endTimeOfRefundsClaiming(game) < now) {
             return 0;
         }
         
@@ -492,5 +484,21 @@ library GameLogic {
             offset -= 8;
         }
         return bytes32(retVal);
+    }
+    
+    function endTimeOfAwardsClaiming(Instance storage game) 
+        view 
+        public 
+        returns (uint256)
+    {
+        return game.closeTime.add(game.claimTimeAfterClose & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+    }
+    
+    function endTimeOfRefundsClaiming(Instance storage game) 
+        view 
+        public 
+        returns (uint256)
+    {
+        return  game.closeTime.add(game.claimTimeAfterClose >> 128);
     }
 }

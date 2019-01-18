@@ -28,6 +28,7 @@ contract GamePool is Ownable, usingOraclize {
     uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
     uint256 public ORICALIZE_GAS_LIMIT = 120000;
     uint256 public CLAIM_AWARD_TIME_AFTER_CLOSE = 30 days;
+    uint256 public CLAIM_REFUND_TIME_AFTER_CLOSE = 6 hours;
     uint256 public MAX_FETCHING_TIME_FOR_END_EXRATE = 1 hours;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
@@ -80,6 +81,7 @@ contract GamePool is Ownable, usingOraclize {
             , uint256 _minimumBets
             , uint256 _hiddenTimeLengthBeforeClose
             , uint256 _claimAwardTimeAfterClose
+            , uint256 _claimRefundTimeAfterColose
             , uint256 _maximumFetchingTimeForEndExRate
             , uint256 _numberOfGames)
     {
@@ -87,6 +89,7 @@ contract GamePool is Ownable, usingOraclize {
         _minimumBets = MIN_BET;
         _hiddenTimeLengthBeforeClose = HIDDEN_TIME_BEFORE_CLOSE;
         _claimAwardTimeAfterClose = CLAIM_AWARD_TIME_AFTER_CLOSE;
+        _claimRefundTimeAfterColose = CLAIM_REFUND_TIME_AFTER_CLOSE;
         _maximumFetchingTimeForEndExRate = MAX_FETCHING_TIME_FOR_END_EXRATE;
         _numberOfGames = games.length;
     }
@@ -180,7 +183,8 @@ contract GamePool is Ownable, usingOraclize {
         game.closeTime = _openTime + _duration - 1;
         game.duration = _duration;
         game.hiddenTimeBeforeClose = HIDDEN_TIME_BEFORE_CLOSE;
-        game.claimTimeAfterClose = CLAIM_AWARD_TIME_AFTER_CLOSE;
+        game.claimTimeAfterClose = CLAIM_AWARD_TIME_AFTER_CLOSE
+            | (CLAIM_REFUND_TIME_AFTER_CLOSE << 128);
         game.maximumFetchingTimeForEndExRate = MAX_FETCHING_TIME_FOR_END_EXRATE;
         
         game.coins[0].name = _coinName0;
@@ -548,7 +552,7 @@ contract GamePool is Ownable, usingOraclize {
         public
     {
         GameLogic.Instance storage game = games[_gameId];
-        require(game.closeTime + game.claimTimeAfterClose < now);
+        require(GameLogic.endTimeOfAwardsClaiming(game) < now);
         
         GameLogic.GameBets storage bets = gameBets[_gameId];
         
@@ -565,7 +569,7 @@ contract GamePool is Ownable, usingOraclize {
         public
     {
         GameLogic.Instance storage game = games[_gameId];
-        require(game.closeTime + game.claimTimeAfterClose < now);
+        require(GameLogic.endTimeOfRefundsClaiming(game) < now);
         
         GameLogic.GameBets storage bets = gameBets[_gameId];
         
@@ -594,39 +598,50 @@ contract GamePool is Ownable, usingOraclize {
         GameLogic.GameBets storage gameBet = gameBets[gameId];
         
         if (RecordType.RandY == queryRecords[_id].recordType) {
-            game.Y = game.YDistribution[parseInt(_result)];
-            game.isYChoosed = true;
-            delete queryRecords[_id];
-            emit GameYChoosed(gameId, game.Y);
+            if (now <= game.closeTime.add(game.maximumFetchingTimeForEndExRate)) {
+                game.Y = game.YDistribution[parseInt(_result)];
+                game.isYChoosed = true;
+                delete queryRecords[_id];
+                emit GameYChoosed(gameId, game.Y);
             
-            if (GameLogic.state(game, gameBet) == GameLogic.State.WaitToClose) {
-                emit GameWaitToClose(gameId);
+                if (GameLogic.state(game, gameBet) == GameLogic.State.WaitToClose) {
+                    emit GameWaitToClose(gameId);
+                }   
+            } else {
+                delete queryRecords[_id];
             }
             
         } else {
             uint256 coinId = queryRecords[_id].arg;
             if (RecordType.StartExRate == queryRecords[_id].recordType) {
-                game.coins[coinId].startExRate = int256(parseInt(_result, 5));
-                game.coins[coinId].timeStampOfStartExRate = now;
-                delete queryRecords[_id];
-                emit StartExRateUpdated(gameId, coinId, int32(game.coins[coinId].startExRate), now);
+                if (now <= game.closeTime) {
+                    game.coins[coinId].startExRate = int256(parseInt(_result, 5));
+                    game.coins[coinId].timeStampOfStartExRate = now;
+                    
+                    delete queryRecords[_id];
+                    emit StartExRateUpdated(gameId, coinId, int32(game.coins[coinId].startExRate), now);
                 
-                if (GameLogic.state(game, gameBet) == GameLogic.State.Ready) {
-                    emit GameReady(gameId);
-                } else if (GameLogic.state(game, gameBet) == GameLogic.State.Open) {
-                    emit GameOpened(gameId);
+                    if (GameLogic.state(game, gameBet) == GameLogic.State.Ready) {
+                        emit GameReady(gameId);
+                    } else if (GameLogic.state(game, gameBet) == GameLogic.State.Open) {
+                        emit GameOpened(gameId);
+                    }
+                } else {
+                    delete queryRecords[_id];
                 }
-                
             } else if (RecordType.EndExRate == queryRecords[_id].recordType) {
-                game.coins[coinId].endExRate = int256(parseInt(_result, 5));
-                game.coins[coinId].timeStampOfEndExRate = now;
-                delete queryRecords[_id];
-                emit EndExRateUpdated(gameId, coinId, int32(game.coins[coinId].endExRate), now);
+                if (now <= game.closeTime.add(game.maximumFetchingTimeForEndExRate)) {
+                    game.coins[coinId].endExRate = int256(parseInt(_result, 5));
+                    game.coins[coinId].timeStampOfEndExRate = now;
+                    delete queryRecords[_id];
+                    emit EndExRateUpdated(gameId, coinId, int32(game.coins[coinId].endExRate), now);
                 
-                if (GameLogic.state(game, gameBet) == GameLogic.State.WaitToClose) {
-                    emit GameWaitToClose(gameId);
+                    if (GameLogic.state(game, gameBet) == GameLogic.State.WaitToClose) {
+                        emit GameWaitToClose(gameId);
+                    }
+                } else {
+                    delete queryRecords[_id];
                 }
-                
             } else {
                 revert();
             }
