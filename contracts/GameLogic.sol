@@ -224,7 +224,7 @@ library GameLogic {
                 // sole winner.
                 game.isFinished = true;
                 convertTempIdsToWinnerIds(game, otherIds);
-            } else if (otherIds >= 8 && otherIds != 0) {
+            } else if (otherIds >= 8) {
 				// compare.
 				i = bets.coinbets[(otherIds & 0x7) - 1].totalBetAmount;
 				j = bets.coinbets[((otherIds >> 3) & 0x7) - 1].totalBetAmount;

@@ -24,12 +24,12 @@ contract GamePool is Ownable, usingOraclize {
     address public txFeeReceiver;
     uint256 public oraclizeFee;
     
-    uint256 public MIN_BET = 10 finney; // 0.01 ether.
+    uint256 public MIN_BET = 100 finney; // 0.1 ether.
     uint256 public HIDDEN_TIME_BEFORE_CLOSE = 5 minutes;
     uint256 public ORICALIZE_GAS_LIMIT = 120000;
     uint256 public CLAIM_AWARD_TIME_AFTER_CLOSE = 30 days;
     uint256 public CLAIM_REFUND_TIME_AFTER_CLOSE = 6 hours;
-    uint256 public MAX_FETCHING_TIME_FOR_END_EXRATE = 1 hours;
+    uint256 public MAX_FETCHING_TIME_FOR_END_EXRATE = 3 hours;
     
     event StartExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
     event EndExRateUpdated(uint256 indexed gameId, uint256 coinId, int32 rate, uint256 timeStamp);
